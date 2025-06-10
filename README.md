@@ -18,7 +18,9 @@ npm install -g eas-cli
 eas build:configure
 eas build -p android --profile preview
 
-STEPS:
+# APK STEPS: 
+To test implements code working as expected or to validate use teh below commands and genrate .apk file and validate the things , if things all are good then geneate .aab file and upload to appstore.
+
 npm install -g eas-cli
 ```
 Installs the Expo Application Services (EAS) CLI globally, so you can use EAS commands from anywhere on your system.
@@ -34,4 +36,9 @@ Sets up your Expo project for EAS Build by creating or updating the `eas.json` c
 eas build -p android --profile preview
 ```
 Starts a cloud build for an Android app using the `preview` profile from your `eas.json`. After completion, you’ll get a link to download the `.apk` or `.aab` file.
+
 ```
+
+# AAB STEPS: 
+
+eas build -p android --profile production
