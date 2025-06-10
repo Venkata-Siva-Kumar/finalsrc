@@ -1,0 +1,798 @@
+const express = require('express');
+const cors = require('cors');
+const mysql = require('mysql2');
+const bcrypt = require('bcrypt');
+require('dotenv').config();
+
+
+const app = express();
+app.use(cors());
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ limit: '1mb', extended: true }));
+
+// ✅ Connect to MySQL
+const db = mysql.createConnection({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT,
+  multipleStatements: true
+});
+
+db.connect(err => {
+  if (err) {
+    console.error('❌ Database connection failed:', err);
+    process.exit(1);
+  }
+  console.log('✅ Connected to database');
+});
+
+
+
+app.post('/signup', (req, res) => {
+  const { fname, lname, mobile, password, gender, email, dob } = req.body;
+  if (!fname || !lname || !mobile || !password || !gender) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
+  db.query('SELECT * FROM users WHERE mobile = ?', [mobile], async (err, results) => {
+    if (err) return res.status(500).json({ message: 'Database error' });
+    if (results.length > 0) return res.status(400).json({ message: 'User already exists' });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    db.query(
+      `INSERT INTO users (fname, lname, mobile, password, gender, email, dob) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [fname, lname, mobile, hashedPassword, gender, email || null, dob || null],
+      err => {
+        if (err) return res.status(500).json({ message: 'Error inserting user' });
+        res.json({ message: 'User registered successfully' });
+      }
+    );
+  });
+});
+// ...existing code...
+
+// ✅ Login route
+app.post('/login', (req, res) => {
+  const { mobile, password } = req.body;
+  db.query('SELECT * FROM users WHERE mobile = ?', [mobile], (err, results) => {
+    if (err) return res.status(500).json({ message: 'Database error' });
+    if (results.length === 0) return res.status(401).json({ message: 'Invalid mobile number' });
+
+    const hashedPassword = results[0].password;
+    bcrypt.compare(password, hashedPassword, (err, isMatch) => {
+      if (err) return res.status(500).json({ message: 'Password comparison error' });
+      if (!isMatch) return res.status(401).json({ message: 'Invalid password' });
+      res.json({ message: 'Login successful' });
+    });
+  });
+});
+
+app.get('/products', (req, res) => {
+  const categoryId = req.query.category_id;
+  const search = req.query.search;
+  let sql = `
+  SELECT p.*, c.name AS category_name, i.image_data, i.mime_type
+  FROM products p
+  LEFT JOIN categories c ON p.category_id = c.id
+  LEFT JOIN images i ON i.product_id = p.id
+    AND i.id = (
+      SELECT MAX(id) FROM images WHERE product_id = p.id
+    )
+`;
+  let conditions = [];
+  let params = [];
+
+  if (categoryId) {
+    conditions.push('p.category_id = ?');
+    params.push(categoryId);
+  }
+  if (search) {
+    conditions.push('(p.name LIKE ? OR p.description LIKE ?)');
+    params.push(`%${search}%`, `%${search}%`);
+  }
+  if (conditions.length > 0) {
+    sql += ' WHERE ' + conditions.join(' AND ');
+  }
+
+  db.query(sql, params, (err, results) => {
+    if (err) {
+      console.error('DB Error:', err);
+      res.status(500).json({ error: 'Database error' });
+    } else {
+      const products = results.map(row => ({
+        ...row,
+        image_url: row.image_data
+          ? `data:${row.mime_type || 'image/jpeg'};base64,${row.image_data.toString('base64')}`
+          : null,
+      }));
+      res.json(products);
+    }
+  });
+});
+
+
+app.post('/place-order', (req, res) => {
+  let { orderId, totalAmount, orderDate, orderStatus, user_id, mobile, address_id, items } = req.body;
+
+  // If user_id is not provided but mobile is, look up user_id
+  function getUserIdAndInsertOrder() {
+    if (!user_id && mobile) {
+      // Remove +91 and non-digits, keep last 10 digits
+      mobile = (mobile || '').replace(/^\+91/, '').replace(/\D/g, '').slice(-10);
+      db.query('SELECT id FROM users WHERE mobile = ?', [mobile], (err, results) => {
+        if (err || results.length === 0) {
+          return res.status(400).json({ error: 'User not found for this mobile' });
+        }
+        user_id = results[0].id;
+        insertOrder();
+      });
+    } else {
+      insertOrder();
+    }
+  }
+
+  function insertOrder() {
+    if (!orderId || !totalAmount || !orderDate || !orderStatus || !user_id || !items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const orderSql = `INSERT INTO orders (orderId, totalAmount, orderDate, orderStatus, user_id, address_id)
+                      VALUES (?, ?, ?, ?, ?, ?)`;
+    db.query(
+      orderSql,
+      [orderId, totalAmount, orderDate, orderStatus, user_id, address_id || null],
+      (err, orderResult) => {
+        if (err) {
+          return res.status(500).json({ error: 'Failed to insert order', details: err.message });
+        }
+
+        // Insert order items
+        const orderItemsSql = `INSERT INTO order_items (orderId, productId, quantity, price) VALUES ?`;
+        const orderItemsValues = items.map(item => [
+          orderId,
+          item.productId,
+          item.quantity,
+          item.price
+        ]);
+
+        db.query(orderItemsSql, [orderItemsValues], (err, itemsResult) => {
+          if (err) {
+            return res.status(500).json({ error: 'Failed to insert order items', details: err.message });
+          }
+          res.json({ success: true, orderId });
+        });
+      }
+    );
+  }
+
+  getUserIdAndInsertOrder();
+});
+
+// ...existing code...
+
+app.get('/addresses', (req, res) => {
+  const { user_id } = req.query;
+  if (!user_id) {
+    return res.status(400).json({ message: 'Missing user_id' });
+  }
+  db.query('SELECT * FROM addresses WHERE user_id = ?', [user_id], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ message: 'Error fetching addresses' });
+    }
+    res.json(rows);
+  });
+});
+
+// ✅ Remove Address
+app.delete('/addresses/:id', (req, res) => {
+  const { id } = req.params;
+  db.query('DELETE FROM addresses WHERE id = ?', [id], (err, result) => {
+    if (err) {
+      console.error('❌ Error deleting address:', err);
+      return res.status(500).json({ message: 'Error deleting address: ' + err.message });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Address not found' });
+    }
+    res.json({ message: 'Address deleted successfully' });
+  });
+});
+
+
+
+// Example for Express backend
+// Express backend example
+app.post('/update-user', (req, res) => {
+  const { mobile, fname, lname, email, gender, dob } = req.body;
+  if (!mobile || !fname || !lname || !gender) {
+    return res.json({ success: false, message: 'Missing required fields' });
+  }
+  db.query(
+    'UPDATE users SET fname = ?, lname = ?, email = ?, gender = ?, dob = ? WHERE mobile = ?',
+    [fname, lname, email || null, gender, dob || null, mobile],
+    (err, result) => {
+      if (err) return res.json({ success: false, message: err.message });
+      if (result.affectedRows === 0) {
+        return res.json({ success: false, message: 'User not found' });
+      }
+      res.json({ success: true });
+    }
+  );
+});
+
+// Express example
+app.get('/user', (req, res) => {
+  const { mobile } = req.query;
+  if (!mobile) return res.status(400).json({ message: 'Missing mobile' });
+  db.query('SELECT * FROM users WHERE mobile = ?', [mobile], (err, results) => {
+    if (err || results.length === 0) return res.json({ user: null });
+    res.json({ user: results[0] });
+  });
+});
+
+
+// Admin login route
+app.post('/admin-login', (req, res) => {
+  const { mobile, password } = req.body;
+  db.query('SELECT * FROM admins WHERE mobile = ?', [mobile], (err, results) => {
+    if (err) return res.status(500).json({ message: 'Database error' });
+    if (results.length === 0) return res.status(401).json({ message: 'Admin not found' });
+
+    const hashedPassword = results[0].password;
+    bcrypt.compare(password, hashedPassword, (err, isMatch) => {
+      if (err) return res.status(500).json({ message: 'Password comparison error' });
+      if (!isMatch) return res.status(401).json({ message: 'Invalid password' });
+      res.json({ message: 'Admin login successful' });
+    });
+  });
+});
+// ✅ Add Product route
+app.post('/products', (req, res) => {
+  const { name, price, description, category } = req.body;
+  db.query('SELECT id FROM categories WHERE name = ?', [category], (err, results) => {
+    if (err || results.length === 0) {
+      return res.status(400).json({ error: 'Invalid category' });
+    }
+    const category_id = results[0].id;
+    db.query(
+      'INSERT INTO products (name, price, description, category_id) VALUES (?, ?, ?, ?)',
+      [name, price, description, category_id],
+      (err, result) => {
+        if (err) {
+          if (err.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ error: 'Product name already exists' });
+          }
+          return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ id: result.insertId });
+      }
+    );
+  });
+});
+
+app.get('/orders', (req, res) => {
+  const { user_id } = req.query;
+  let sql = `
+    SELECT o.*, u.mobile AS userMobile, a.name AS addressName, a.addr_mobile, a.pincode, a.locality, a.address, a.city, a.state, a.landmark
+    FROM orders o
+    LEFT JOIN users u ON o.user_id = u.id
+    LEFT JOIN addresses a ON o.address_id = a.id
+  `;
+  let params = [];
+
+  if (user_id) {
+    sql += ' WHERE o.user_id = ?';
+    params.push(user_id);
+  }
+
+  db.query(sql, params, (err, orders) => {
+    if (err) return res.status(500).json({ message: 'Error fetching orders' });
+    if (!orders.length) return res.json([]);
+
+    const orderIds = orders.map(o => o.orderId);
+    if (orderIds.length === 0) return res.json([]);
+
+    const placeholders = orderIds.map(() => '?').join(',');
+    const itemsSql = `
+      SELECT oi.*, p.name 
+      FROM order_items oi 
+      JOIN products p ON oi.productId = p.id 
+      WHERE oi.orderId IN (${placeholders})
+    `;
+
+    db.query(itemsSql, orderIds, (err, items) => {
+      if (err) return res.status(500).json({ message: 'Error fetching order items' });
+
+      const itemsByOrder = {};
+      items.forEach(item => {
+        if (!itemsByOrder[item.orderId]) itemsByOrder[item.orderId] = [];
+        itemsByOrder[item.orderId].push({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          productId: item.productId
+        });
+      });
+
+      const ordersWithItems = orders.map(order => ({
+        ...order,
+        deliveryAddress: {
+          name: order.addressName,
+          mobile: order.addr_mobile,
+          pincode: order.pincode,
+          locality: order.locality,
+          address: order.address,
+          city: order.city,
+          state: order.state,
+          landmark: order.landmark,
+        },
+        items: itemsByOrder[order.orderId] || [],
+      }));
+
+      res.json(ordersWithItems);
+    });
+  });
+});
+
+
+// Add a new address
+app.post('/addresses', (req, res) => {
+  const { user_id, name, addr_mobile, pincode, locality, address, city, state, landmark } = req.body;
+  if (!user_id || !name || !addr_mobile || !pincode || !address) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
+  const addressStr = JSON.stringify(address); // Store as JSON string
+  const sql = `
+    INSERT INTO addresses (user_id, name, addr_mobile, pincode, locality, address, city, state, landmark)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+  db.query(
+    sql,
+    [user_id, name, addr_mobile, pincode, locality, addressStr, city, state, landmark],
+    (err, result) => {
+      if (err) {
+        console.error('❌ Error inserting address:', err);
+        return res.status(500).json({ message: 'Error inserting address: ' + err.message });
+      }
+      // Return the newly created address (with its id)
+      db.query('SELECT * FROM addresses WHERE id = ?', [result.insertId], (err2, rows) => {
+        if (err2 || rows.length === 0) {
+          return res.status(500).json({ message: 'Error fetching new address' });
+        }
+        res.json(rows[0]);
+      });
+    }
+  );
+});
+
+// Update an existing address
+app.put('/addresses/:id', (req, res) => {
+  const { id } = req.params;
+  const { user_id, name, addr_mobile, pincode, locality, address, city, state, landmark } = req.body;
+  if (!user_id || !name || !addr_mobile || !pincode || !address) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
+  const addressStr = JSON.stringify(address);
+  const sql = `
+    UPDATE addresses
+    SET user_id = ?, name = ?, addr_mobile = ?, pincode = ?, locality = ?, address = ?, city = ?, state = ?, landmark = ?
+    WHERE id = ?
+  `;
+  db.query(
+    sql,
+    [user_id, name, addr_mobile, pincode, locality, addressStr, city, state, landmark, id],
+    (err, result) => {
+      if (err) {
+        console.error('❌ Error updating address:', err);
+        return res.status(500).json({ message: 'Error updating address: ' + err.message });
+      }
+      // Return the updated address
+      db.query('SELECT * FROM addresses WHERE id = ?', [id], (err2, rows) => {
+        if (err2 || rows.length === 0) {
+          return res.status(500).json({ message: 'Error fetching updated address' });
+        }
+        res.json(rows[0]);
+      });
+    }
+  );
+});
+
+// ✅ Delete user by mobile number
+app.delete('/users/:mobile', (req, res) => {
+  const { mobile } = req.params;
+  if (!mobile) {
+    return res.status(400).json({ message: 'Missing mobile number' });
+  }
+  // First, check if user exists
+  db.query('SELECT * FROM users WHERE mobile = ?', [mobile], (err, results) => {
+    if (err) return res.status(500).json({ message: 'Database error' });
+    if (results.length === 0) return res.status(404).json({ message: 'User not found' });
+
+    // Delete user
+    db.query('DELETE FROM users WHERE mobile = ?', [mobile], (err2, result) => {
+      if (err2) return res.status(500).json({ message: 'Error deleting user' });
+      res.json({ message: 'User deleted successfully' });
+    });
+  });
+});
+
+
+// ...existing code...
+app.get('/orders/:userId', (req, res) => {
+  const userId = req.params.userId;
+
+  // Get all orders for this user
+  const ordersSql = 'SELECT * FROM orders WHERE user_id = ? ORDER BY orderDate DESC';
+  db.query(ordersSql, [userId], (err, orders) => {
+    if (err) return res.status(500).json({ error: 'Failed to fetch orders' });
+
+    if (!orders.length) return res.json([]);
+
+    // Get all order items for these orders
+    const orderIds = orders.map(o => o.orderId);
+    const itemsSql = 'SELECT * FROM order_items WHERE orderId IN (?)';
+    db.query(itemsSql, [orderIds], (err, items) => {
+      if (err) return res.status(500).json({ error: 'Failed to fetch order items' });
+
+      // Group items by orderId
+      const itemsByOrder = {};
+      items.forEach(item => {
+        if (!itemsByOrder[item.orderId]) itemsByOrder[item.orderId] = [];
+        itemsByOrder[item.orderId].push(item);
+      });
+
+      // Attach items to orders
+      const ordersWithItems = orders.map(order => ({
+        ...order,
+        items: itemsByOrder[order.orderId] || []
+      }));
+
+      res.json(ordersWithItems);
+    });
+  });
+});
+
+
+
+
+
+app.post('/categories', (req, res) => {
+  const { name, image_base64 } = req.body;
+  if (!name || !image_base64) {
+    return res.status(400).json({ error: 'Name and image are required' });
+  }
+  const imageBuffer = Buffer.from(image_base64, 'base64');
+  
+  db.query(
+    'INSERT INTO categories (name, image_data) VALUES (?, ?)',
+    [name, imageBuffer],
+    (err, result) => {
+      if (err) {
+        if (err.code === 'ER_DUP_ENTRY') {
+          return res.status(409).json({ error: 'Category name already exists' });
+        }
+        return res.status(500).json({ error: 'Database error' });
+      }
+      res.json({ id: result.insertId });
+    }
+  );
+});
+
+// Edit category image
+app.put('/categories/:id/image', (req, res) => {
+  const { image_base64 } = req.body;
+  const { id } = req.params;
+  if (!image_base64) {
+    return res.status(400).json({ error: 'Image is required' });
+  }
+  const imageBuffer = Buffer.from(image_base64, 'base64');
+  console.log('Updating category image:', { id, image_base64_length: image_base64.length });
+  db.query(
+    'UPDATE categories SET image_data = ? WHERE id = ?',
+    [imageBuffer, id],
+    (err, result) => {
+      if (err) {
+        console.error('DB Error:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: 'Category not found' });
+      }
+      res.json({ success: true });
+    }
+  );
+});
+
+// Edit category name only
+app.put('/categories/:id', (req, res) => {
+  const { id } = req.params;
+  const { name } = req.body;
+  if (!name) {
+    return res.status(400).json({ error: 'Name is required' });
+  }
+  db.query(
+    'UPDATE categories SET name = ? WHERE id = ?',
+    [name, id],
+    (err, result) => {
+      if (err) {
+        if (err.code === 'ER_DUP_ENTRY') {
+          return res.status(409).json({ error: 'Category name already exists' });
+        }
+        return res.status(500).json({ error: 'Database error' });
+      }
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: 'Category not found' });
+      }
+      res.json({ success: true });
+    }
+  );
+});
+
+
+// Get all categories with image as base64 url
+app.get('/categories', (req, res) => {
+  db.query('SELECT id, name, image_data FROM categories', (err, results) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    const categories = results.map(row => ({
+      id: row.id,
+      name: row.name,
+      image_url: row.image_data
+        ? `data:image/jpeg;base64,${row.image_data.toString('base64')}`
+        : null,
+    }));
+    res.json(categories);
+  });
+});
+
+
+// Delete a category by ID
+app.delete('/categories/:id', (req, res) => {
+  const { id } = req.params;
+  db.query('DELETE FROM categories WHERE id = ?', [id], (err, result) => {
+    if (err) {
+      // If foreign key constraint fails, send a clear message
+      if (err.code === 'ER_ROW_IS_REFERENCED_2') {
+        return res.status(400).json({ error: 'Cannot delete category: It is referenced in other records.' });
+      }
+      return res.status(500).json({ error: 'Failed to remove category' });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Category not found' });
+    }
+    res.json({ success: true });
+  });
+});
+
+
+app.post('/images', (req, res) => {
+  const { product_id, image_base64, mime_type } = req.body;
+  if (!product_id || !image_base64) {
+    return res.status(400).json({ message: 'Missing product_id or image data' });
+  }
+  const imageBuffer = Buffer.from(image_base64, 'base64');
+  db.query(
+    `INSERT INTO images (product_id, image_data, mime_type)
+     VALUES (?, ?, ?)
+     ON DUPLICATE KEY UPDATE image_data = VALUES(image_data), mime_type = VALUES(mime_type)`,
+    [product_id, imageBuffer, mime_type || 'image/jpeg'],
+    (err, result) => {
+      if (err) {
+        console.error('DB Error:', err);
+        return res.status(500).json({ message: 'Failed to store image' });
+      }
+      res.json({ success: true });
+    }
+  );
+});
+
+app.put('/orders/:id/status', (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  db.query(
+    'UPDATE orders SET orderStatus = ? WHERE orderId = ?',
+    [status, id],
+    (err, result) => {
+      if (err) return res.status(500).json({ message: 'Failed to update status' });
+      res.json({ message: 'Order status updated' });
+    }
+  );
+});
+
+// To serve the image:
+app.get('/images/:id', async (req, res) => {
+  const [rows] = await db.query('SELECT image_data, mime_type FROM images WHERE product_id = ?', [req.params.id]);
+  if (!rows.length) return res.status(404).send('Not found');
+  res.set('Content-Type', rows[0].mime_type || 'image/jpeg');
+  res.send(rows[0].image_data);
+});
+
+// Enable/Disable product
+app.put('/products/:id/status', (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  if (!['enabled', 'disabled'].includes(status)) {
+    return res.status(400).json({ error: 'Invalid status' });
+  }
+  db.query(
+    'UPDATE products SET status = ? WHERE id = ?',
+    [status, id],
+    (err, result) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to update status' });
+      }
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: 'Product not found' });
+      }
+      res.json({ success: true });
+    }
+  );
+});
+
+// Edit product price
+// Edit product name and price
+app.put('/products/:id/status', (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  if (!['enabled', 'disabled'].includes(status)) {
+    return res.status(400).json({ error: 'Invalid status value' });
+  }
+  db.query(
+    'UPDATE products SET status = ? WHERE id = ?',
+    [status, id],
+    (err, result) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to update product status' });
+      }
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: 'Product not found' });
+      }
+      res.json({ success: true });
+    }
+  );
+});
+
+app.delete('/products/:id', (req, res) => {
+  const { id } = req.params;
+  db.query('DELETE FROM products WHERE id = ?', [id], (err, result) => {
+    if (err) {
+      // If foreign key constraint fails, send a clear message
+      if (err.code === 'ER_ROW_IS_REFERENCED_2') {
+        return res.status(400).json({ error: 'Cannot delete product: It is referenced in other records.' });
+      }
+      return res.status(500).json({ error: 'Failed to remove product' });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    res.json({ success: true });
+  });
+});
+
+app.get('/contact-center', (req, res) => {
+  db.query('SELECT id, type, value, description FROM contact_center', (err, results) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json(results);
+  });
+});
+
+
+// Get daily earnings with optional date filter
+// Get daily earnings with optional date filter
+app.get('/earnings', (req, res) => {
+  const { from, to } = req.query;
+  let sql = `
+    SELECT DATE(orderDate) as date, SUM(totalAmount) as total
+    FROM orders
+    WHERE orderStatus = 'Delivered'
+  `;
+  const params = [];
+  if (from) {
+    sql += ' AND DATE(orderDate) >= ?';
+    params.push(from);
+  }
+  if (to) {
+    sql += ' AND DATE(orderDate) <= ?';
+    params.push(to);
+  }
+  sql += ' GROUP BY DATE(orderDate) ORDER BY DATE(orderDate) DESC';
+
+  db.query(sql, params, (err, results) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json(results);
+  });
+});
+
+// Get all cart items for a user (with product details)
+app.get('/cart', (req, res) => {
+  const { user_id } = req.query;
+  if (!user_id) {
+    return res.status(400).json({ error: 'Missing user_id' });
+  }
+  const sql = `
+    SELECT c.product_id AS id, c.quantity, p.name, p.price, 
+           COALESCE(i.image_data, NULL) AS image_data, i.mime_type
+    FROM cart c
+    JOIN products p ON c.product_id = p.id
+    LEFT JOIN images i ON i.product_id = p.id
+    WHERE c.user_id = ?
+  `;
+  db.query(sql, [user_id], (err, results) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    const cart = results.map(row => ({
+      id: row.id,
+      name: row.name,
+      price: row.price,
+      quantity: row.quantity,
+      image_url: row.image_data
+        ? `data:${row.mime_type || 'image/jpeg'};base64,${row.image_data.toString('base64')}`
+        : null,
+    }));
+    res.json(cart);
+  });
+});
+
+// Add or update a cart item
+app.post('/cart', (req, res) => {
+  const { user_id, product_id, quantity } = req.body;
+  if (!user_id || !product_id || !quantity) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  db.query(
+    `INSERT INTO cart (user_id, product_id, quantity)
+     VALUES (?, ?, ?)
+     ON DUPLICATE KEY UPDATE quantity = VALUES(quantity)`,
+    [user_id, product_id, quantity],
+    (err, result) => {
+      if (err) {
+        return res.status(500).json({ error: 'Database error' });
+      }
+      res.json({ success: true });
+    }
+  );
+});
+
+// Remove a cart item
+app.delete('/cart', (req, res) => {
+  const { user_id, product_id } = req.body;
+  if (!user_id || !product_id) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  db.query(
+    `DELETE FROM cart WHERE user_id = ? AND product_id = ?`,
+    [user_id, product_id],
+    (err, result) => {
+      if (err) {
+        return res.status(500).json({ error: 'Database error' });
+      }
+      res.json({ success: true });
+    }
+  );
+});
+
+// Clear all cart items for a user
+app.delete('/cart/clear', (req, res) => {
+  const { user_id } = req.body;
+  if (!user_id) return res.status(400).json({ error: 'Missing user_id' });
+  db.query('DELETE FROM cart WHERE user_id = ?', [user_id], (err) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json({ success: true });
+  });
+});
+
+// ...existing code...
+
+// ✅ Get all pincodes
+app.get('/pincodes', (req, res) => {
+  db.query('SELECT pincode FROM pincode', (err, results) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database error' });
+    }
+    res.json(results.map(row => row.pincode));
+  });
+});
+
+// ...existing code...
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`🚀 Server running on http://0.0.0.0:${PORT}`));

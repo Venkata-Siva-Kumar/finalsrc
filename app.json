@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "07baab10-c445-4278-8598-f9fa227de334"
+      }
+    },
+    "android": {
+      "package": "com.mariyala_siva.kiranastoreapp"
+    }
+  }
+}
