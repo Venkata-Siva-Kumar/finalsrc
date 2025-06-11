@@ -42,3 +42,14 @@ Starts a cloud build for an Android app using the `preview` profile from your `e
 # AAB STEPS: 
 
 eas build -p android --profile production
+
+
+# in render
+In render we have use the follwoing params
+* Root Directory  as backend folder name i.e. backend (as per our application) its mentioned as optional but its mandatory
+* Build Command : npm install
+*  Start Command : npm start
+# expo account commands 
+eas logout
+eas login
+
