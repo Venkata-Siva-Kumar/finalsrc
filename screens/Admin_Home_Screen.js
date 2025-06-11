@@ -193,6 +193,7 @@ function CategoryManager() {
           <TextInput
             style={styles.input}
             placeholder="Category Name"
+            placeholderTextColor="#888"
             value={newCatName}
             onChangeText={setNewCatName}
           />
@@ -265,6 +266,7 @@ function CategoryManager() {
               value={editCatName}
               onChangeText={setEditCatName}
               placeholder="Category Name"
+              placeholderTextColor="#888"
             />
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 18 }}>
               <TouchableOpacity
@@ -338,7 +340,7 @@ function AddProductTab({ onProductAdded }) {
       const product_id = prodRes.data.id;
 
       await axios.post(`${API_BASE_URL}/images`, {
-        product_id: product_id, // <-- FIXED: use product_id from response
+        product_id,
         image_base64: imageBase64,
         mime_type: 'image/jpeg',
       });
@@ -365,6 +367,7 @@ function AddProductTab({ onProductAdded }) {
       <TextInput
         style={styles.input}
         placeholder="Product Name"
+        placeholderTextColor="#888"
         value={name}
         onChangeText={setName}
       />
@@ -372,6 +375,7 @@ function AddProductTab({ onProductAdded }) {
       <TextInput
         style={styles.input}
         placeholder="Price"
+        placeholderTextColor="#888"
         value={price}
         onChangeText={setPrice}
         keyboardType="numeric"
@@ -380,6 +384,7 @@ function AddProductTab({ onProductAdded }) {
       <TextInput
         style={styles.input}
         placeholder="Description"
+        placeholderTextColor="#888"
         value={description}
         onChangeText={setDescription}
         multiline
@@ -578,6 +583,7 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
         <TextInput
           style={{ flex: 1, fontSize: 16 }}
           placeholder="Search products..."
+          placeholderTextColor="#888"
           value={search}
           onChangeText={setSearch}
           clearButtonMode="while-editing"
@@ -631,6 +637,7 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
                       {item.status === 'enabled' ? 'Enabled' : 'Disabled'}
                     </Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={[
                       styles.button,
@@ -640,6 +647,7 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
                   >
                     <Text style={styles.buttonText}>Edit</Text>
                   </TouchableOpacity>
+                  
                   <TouchableOpacity
                     style={[
                       styles.button,
@@ -683,6 +691,7 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
               value={editName}
               onChangeText={setEditName}
               placeholder="Product Name"
+              placeholderTextColor="#888"
             />
             <Text style={styles.labelPrice}>Price</Text>
             <TextInput
@@ -690,6 +699,7 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
               value={editPrice}
               onChangeText={setEditPrice}
               placeholder="Price"
+              placeholderTextColor="#888"
               keyboardType="numeric"
             />
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 18 }}>
@@ -850,22 +860,11 @@ function AdminHomeScreen({ navigation }) {
   const [products, setProducts] = useState([]);
 
   const refreshProducts = useCallback(() => {
-  axios
-    .get(`${API_BASE_URL}/products`)
-    .then((res) => {
-      // Deduplicate by product id
-      const unique = [];
-      const seen = new Set();
-      for (const prod of res.data) {
-        if (!seen.has(prod.id)) {
-          unique.push(prod);
-          seen.add(prod.id);
-        }
-      }
-      setProducts(unique);
-    })
-    .catch(() => Alert.alert('Error', 'Failed to load products'));
-}, []);
+    axios
+      .get(`${API_BASE_URL}/products`)
+      .then((res) => setProducts(res.data))
+      .catch(() => Alert.alert('Error', 'Failed to load products'));
+  }, []);
 
   useLayoutEffect(() => {
     navigation.setOptions({

@@ -101,6 +101,7 @@ export default function SignupScreen({ navigation }) {
         </Text>
         <TextInput
           placeholder="First Name"
+          placeholderTextColor="#888"
           style={[
             styles.input,
             touched.fname && !fname ? styles.inputError : styles.inputUnique
@@ -119,6 +120,7 @@ export default function SignupScreen({ navigation }) {
         </Text>
         <TextInput
           placeholder="Last Name"
+          placeholderTextColor="#888"
           style={[
             styles.input,
             touched.lname && !lname ? styles.inputError : styles.inputUnique
@@ -137,6 +139,7 @@ export default function SignupScreen({ navigation }) {
         </Text>
         <TextInput
           placeholder="Mobile Number"
+          placeholderTextColor="#888"
           keyboardType="phone-pad"
           style={[
             styles.input,
@@ -157,6 +160,7 @@ export default function SignupScreen({ navigation }) {
         <View style={[styles.input, styles.inputUnique, styles.passwordRow, touched.password && !password ? styles.inputError : null]}>
           <TextInput
             placeholder="Password"
+            placeholderTextColor="#888"
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
@@ -174,6 +178,7 @@ export default function SignupScreen({ navigation }) {
         <View style={[styles.input, styles.inputUnique, styles.passwordRow, touched.confirmPassword && !confirmPassword ? styles.inputError : null]}>
           <TextInput
             placeholder="Confirm Password"
+            placeholderTextColor="#888"
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry={!showConfirmPassword}
@@ -210,6 +215,7 @@ export default function SignupScreen({ navigation }) {
         <Text style={styles.label}>Email (optional)</Text>
         <TextInput
           placeholder="abcd@gmail.com"
+          placeholderTextColor="#888"
           keyboardType="email-address"
           style={[styles.input, styles.inputUnique]}
           value={email}
@@ -221,6 +227,7 @@ export default function SignupScreen({ navigation }) {
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
           <TextInput
             placeholder="dd-mm-yyyy"
+            placeholderTextColor="#888"
             value={dob}
             maxLength={10}
             keyboardType="number-pad"

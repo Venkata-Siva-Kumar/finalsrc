@@ -213,6 +213,7 @@ export default function SavedAddressesScreen({ route ,navigation}) {
               value={addressForm.name}
               onChangeText={(text) => setAddressForm({ ...addressForm, name: text })}
               placeholder="Name"
+              placeholderTextColor="#888"
             />
             <Text>Mobile Number *</Text>
             <TextInput
@@ -220,6 +221,7 @@ export default function SavedAddressesScreen({ route ,navigation}) {
               value={addressForm.mobile}
               onChangeText={(text) => setAddressForm({ ...addressForm, mobile: text })}
               placeholder="Mobile Number"
+              placeholderTextColor="#888"
               keyboardType="phone-pad"
               maxLength={10}
             />
@@ -229,6 +231,7 @@ export default function SavedAddressesScreen({ route ,navigation}) {
               value={addressForm.pincode}
               onChangeText={(text) => setAddressForm({ ...addressForm, pincode: text })}
               placeholder="Pincode"
+              placeholderTextColor="#888"
               keyboardType="numeric"
               maxLength={6}
             />
@@ -238,6 +241,7 @@ export default function SavedAddressesScreen({ route ,navigation}) {
               value={addressForm.address}
               onChangeText={(text) => setAddressForm({ ...addressForm, address: text })}
               placeholder="Full Address"
+              placeholderTextColor="#888"
               multiline={true}
             />
             <Text>Locality/Area/Street</Text>
@@ -246,6 +250,7 @@ export default function SavedAddressesScreen({ route ,navigation}) {
               value={addressForm.locality}
               onChangeText={(text) => setAddressForm({ ...addressForm, locality: text })}
               placeholder="Locality"
+              placeholderTextColor="#888"
             />
             <Text>City/Town</Text>
             <TextInput
@@ -253,6 +258,7 @@ export default function SavedAddressesScreen({ route ,navigation}) {
               value={addressForm.city}
               onChangeText={(text) => setAddressForm({ ...addressForm, city: text })}
               placeholder="City/Town"
+              placeholderTextColor="#888"
             />
             <Text>State/Province/Region</Text>
             <TextInput
@@ -260,6 +266,7 @@ export default function SavedAddressesScreen({ route ,navigation}) {
               value={addressForm.state}
               onChangeText={(text) => setAddressForm({ ...addressForm, state: text })}
               placeholder="State/Province/Region"
+              placeholderTextColor="#888"
             />
             <Text>Landmark (Optional)</Text>
             <TextInput
@@ -267,6 +274,7 @@ export default function SavedAddressesScreen({ route ,navigation}) {
               value={addressForm.landmark}
               onChangeText={(text) => setAddressForm({ ...addressForm, landmark: text })}
               placeholder="Landmark (Optional)"
+              placeholderTextColor="#888"
             />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 }}>
               <TouchableOpacity

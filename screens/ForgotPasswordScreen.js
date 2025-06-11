@@ -38,6 +38,7 @@ export default function ForgotPasswordScreen({ navigation }) {
       <TextInput
         style={styles.input}
         placeholder="Enter Mobile Number"
+        placeholderTextColor="#888"
         keyboardType="phone-pad"
         value={mobile}
         onChangeText={setMobile}

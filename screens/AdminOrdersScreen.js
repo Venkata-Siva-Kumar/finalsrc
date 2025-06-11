@@ -38,6 +38,7 @@ function OrdersTab({ orders, productMap, status, updateOrderStatus }) {
         <TextInput
           style={styles.searchBar}
           placeholder=" Search by Order ID"
+          placeholderTextColor="#888"
           value={search}
           onChangeText={setSearch}
           keyboardType="default"

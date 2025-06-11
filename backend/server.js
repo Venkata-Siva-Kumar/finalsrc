@@ -564,13 +564,14 @@ app.delete('/categories/:id', (req, res) => {
   });
 });
 
-
+// ...existing code...
 app.post('/images', (req, res) => {
   const { product_id, image_base64, mime_type } = req.body;
   if (!product_id || !image_base64) {
     return res.status(400).json({ message: 'Missing product_id or image data' });
   }
   const imageBuffer = Buffer.from(image_base64, 'base64');
+  // Use INSERT ... ON DUPLICATE KEY UPDATE for upsert
   db.query(
     `INSERT INTO images (product_id, image_data, mime_type)
      VALUES (?, ?, ?)
@@ -585,6 +586,7 @@ app.post('/images', (req, res) => {
     }
   );
 });
+// ...existing code...
 
 app.put('/orders/:id/status', (req, res) => {
   const { id } = req.params;
@@ -629,20 +631,22 @@ app.put('/products/:id/status', (req, res) => {
   );
 });
 
-// Edit product price
-// Edit product name and price
-app.put('/products/:id/status', (req, res) => {
+
+app.put('/products/:id', (req, res) => {
   const { id } = req.params;
-  const { status } = req.body;
-  if (!['enabled', 'disabled'].includes(status)) {
-    return res.status(400).json({ error: 'Invalid status value' });
+  const { name, price } = req.body;
+  if (!name || !price) {
+    return res.status(400).json({ error: 'Name and price are required' });
   }
   db.query(
-    'UPDATE products SET status = ? WHERE id = ?',
-    [status, id],
+    'UPDATE products SET name = ?, price = ? WHERE id = ?',
+    [name, price, id],
     (err, result) => {
       if (err) {
-        return res.status(500).json({ error: 'Failed to update product status' });
+        if (err.code === 'ER_DUP_ENTRY') {
+          return res.status(409).json({ error: 'Product name already exists' });
+        }
+        return res.status(500).json({ error: 'Database error' });
       }
       if (result.affectedRows === 0) {
         return res.status(404).json({ error: 'Product not found' });
@@ -652,22 +656,6 @@ app.put('/products/:id/status', (req, res) => {
   );
 });
 
-app.delete('/products/:id', (req, res) => {
-  const { id } = req.params;
-  db.query('DELETE FROM products WHERE id = ?', [id], (err, result) => {
-    if (err) {
-      // If foreign key constraint fails, send a clear message
-      if (err.code === 'ER_ROW_IS_REFERENCED_2') {
-        return res.status(400).json({ error: 'Cannot delete product: It is referenced in other records.' });
-      }
-      return res.status(500).json({ error: 'Failed to remove product' });
-    }
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Product not found' });
-    }
-    res.json({ success: true });
-  });
-});
 
 app.get('/contact-center', (req, res) => {
   db.query('SELECT id, type, value, description FROM contact_center', (err, results) => {

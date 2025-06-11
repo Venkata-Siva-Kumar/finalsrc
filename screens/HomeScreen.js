@@ -210,6 +210,7 @@ export default function HomeScreen({ navigation, route }) {
         <TextInput
           style={{ flex: 1, fontSize: 16 }}
           placeholder="Search products..."
+          placeholderTextColor="#888"
           value={searchQuery}
           onChangeText={setSearchQuery}
           clearButtonMode="while-editing"

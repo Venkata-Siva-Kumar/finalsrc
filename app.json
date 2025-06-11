@@ -1,12 +1,18 @@
 {
   "expo": {
-    "extra": {
-      "eas": {
-        "projectId": "07baab10-c445-4278-8598-f9fa227de334"
-      }
-    },
     "android": {
       "package": "com.mariyala_siva.kiranastoreapp"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "88b1fe54-9065-4f3a-8c37-e32971b07b44"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.yourname.kiranastoreapp",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     }
   }
 }

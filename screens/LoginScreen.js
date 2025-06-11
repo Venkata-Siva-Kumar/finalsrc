@@ -88,6 +88,7 @@ export default function LoginScreen({ navigation }) {
           focusedField === 'mobile' && styles.inputFocused
         ]}
         placeholder="Mobile Number"
+        placeholderTextColor="#888"
         keyboardType="phone-pad"
         value={mobile}
         maxLength={10}
@@ -102,6 +103,7 @@ export default function LoginScreen({ navigation }) {
           focusedField === 'password' && styles.inputFocused
         ]}
         placeholder="Password"
+        placeholderTextColor="#888"
         secureTextEntry
         value={password}
         onChangeText={setPassword}

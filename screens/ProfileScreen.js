@@ -165,18 +165,21 @@ export default function ProfileScreen({ route, navigation }) {
     </View>
       <TextInput
         placeholder="First Name"
+        placeholderTextColor="#888"
         style={styles.input}
         value={fname}
         onChangeText={setFname}
       />
       <TextInput
         placeholder="Last Name"
+        placeholderTextColor="#888"
         style={styles.input}
         value={lname}
         onChangeText={setLname}
       />
       <TextInput
         placeholder="Mobile Number"
+        placeholderTextColor="#888"
         style={[styles.input, { backgroundColor: '#eee' }]}
         value={mobile}
         editable={false}
@@ -198,6 +201,7 @@ export default function ProfileScreen({ route, navigation }) {
       </View>
       <TextInput
         placeholder="user@gmail.com (optional)"
+        placeholderTextColor="#888"
         keyboardType="email-address"
         style={styles.input}
         value={email}
@@ -206,6 +210,7 @@ export default function ProfileScreen({ route, navigation }) {
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
         <TextInput
           placeholder="dd-mm-yyyy"
+          placeholderTextColor="#888"
           value={dob}
           maxLength={10}
           keyboardType="number-pad"

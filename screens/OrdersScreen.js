@@ -82,6 +82,7 @@ export default function OrdersScreen({ route, navigation }) {
         <TextInput
           style={styles.searchBar}
           placeholder="Search by Order ID"
+          placeholderTextColor="#888"
           value={search}
           onChangeText={setSearch}
           keyboardType="default"

@@ -75,6 +75,7 @@ export default function AdminLoginScreen({ navigation }) {
           focusedField === 'mobile' && styles.inputFocused
         ]}
         placeholder="Admin Mobile Number"
+        placeholderTextColor="#888"
         keyboardType="phone-pad"
         value={mobile}
         onChangeText={setMobile}
@@ -90,6 +91,7 @@ export default function AdminLoginScreen({ navigation }) {
               
             ]}
             placeholder="Password"
+            placeholderTextColor="#888"
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}

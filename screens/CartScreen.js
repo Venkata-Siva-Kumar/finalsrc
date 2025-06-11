@@ -402,6 +402,7 @@ export default function CartScreen({ navigation, route }) {
         <TextInput
           style={styles.pincodeInput}
           placeholder="Enter Pincode"
+          placeholderTextColor="#888"
           keyboardType="numeric"
           maxLength={6}
           value={pincode}
@@ -550,6 +551,7 @@ export default function CartScreen({ navigation, route }) {
               value={addressForm.name}
               onChangeText={(text) => setAddressForm({ ...addressForm, name: text })}
               placeholder="Name"
+              placeholderTextColor="#888"
             />
 
             <Text>Mobile Number <Text style={{ color: 'red' }}> *</Text></Text>
@@ -558,6 +560,7 @@ export default function CartScreen({ navigation, route }) {
               value={addressForm.addr_mobile}
               onChangeText={(text) => setAddressForm({ ...addressForm, addr_mobile: text })}
               placeholder="Mobile Number"
+              placeholderTextColor="#888"
               keyboardType="phone-pad"
               maxLength={10}
             />
@@ -568,6 +571,7 @@ export default function CartScreen({ navigation, route }) {
               value={addressForm.pincode}
               onChangeText={(text) => setAddressForm({ ...addressForm, pincode: text })}
               placeholder="Pincode"
+              placeholderTextColor="#888"
               keyboardType="numeric"
               maxLength={6}
             />
@@ -578,6 +582,7 @@ export default function CartScreen({ navigation, route }) {
               value={addressForm.address}
               onChangeText={(text) => setAddressForm({ ...addressForm, address: text })}
               placeholder="FullAddress(Flat,House No,Building,Company,Apartment)"
+              placeholderTextColor="#888"
               multiline={true}
             />
 
@@ -587,6 +592,7 @@ export default function CartScreen({ navigation, route }) {
               value={addressForm.locality}
               onChangeText={(text) => setAddressForm({ ...addressForm, locality: text })}
               placeholder="Locality"
+              placeholderTextColor="#888"
             />
 
             <Text>City/Town</Text>
@@ -595,6 +601,7 @@ export default function CartScreen({ navigation, route }) {
               value={addressForm.city}
               onChangeText={(text) => setAddressForm({ ...addressForm, city: text })}
               placeholder="City/Town"
+              placeholderTextColor="#888"
             />
 
             <Text>State/Province/Region</Text>
@@ -603,6 +610,7 @@ export default function CartScreen({ navigation, route }) {
               value={addressForm.state}
               onChangeText={(text) => setAddressForm({ ...addressForm, state: text })}
               placeholder="State/Province/Region"
+              placeholderTextColor="#888"
             />
 
             <Text>Landmark(Optional)</Text>
@@ -611,6 +619,7 @@ export default function CartScreen({ navigation, route }) {
               value={addressForm.landmark}
               onChangeText={(text) => setAddressForm({ ...addressForm, landmark: text })}
               placeholder="Landmark(Optional)"
+              placeholderTextColor="#888"
             />
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 }}>
