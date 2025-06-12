@@ -1,5 +1,6 @@
 {
   "expo": {
+    "icon": "./icon.png",
     "android": {
       "package": "com.mariyala_siva.kiranastoreapp"
     },
