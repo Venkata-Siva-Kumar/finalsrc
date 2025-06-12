@@ -394,6 +394,7 @@ function AddProductTab({ onProductAdded }) {
         <Picker
           selectedValue={category}
           onValueChange={(itemValue) => setCategory(itemValue)}
+          style={{ color: 'black' }}
         >
           <Picker.Item label="Select Category" value="" />
           {categories.map((cat, idx) => {

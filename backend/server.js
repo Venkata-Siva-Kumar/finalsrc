@@ -657,6 +657,50 @@ app.put('/products/:id', (req, res) => {
 });
 
 
+app.delete('/products/:id', (req, res) => {
+  const { id } = req.params;
+
+  // Check if there are any pending orders for this product
+  const checkPendingSql = `
+    SELECT oi.orderId
+    FROM order_items oi
+    JOIN orders o ON oi.orderId = o.orderId
+    WHERE oi.productId = ? AND o.orderStatus != 'Delivered'
+    LIMIT 1
+  `;
+  db.query(checkPendingSql, [id], (err, results) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    if (results.length > 0) {
+      // There is at least one pending order
+      return res.status(400).json({ error: 'Cannot delete: Product has orders that are not delivered.' });
+    }
+
+    // No pending orders, proceed to delete related data and the product
+    db.query('DELETE FROM images WHERE product_id = ?', [id], (err) => {
+      if (err) return res.status(500).json({ error: 'Failed to remove product images' });
+      db.query('DELETE FROM cart WHERE product_id = ?', [id], (err) => {
+        if (err) return res.status(500).json({ error: 'Failed to remove product from cart' });
+        db.query('DELETE FROM order_items WHERE productId = ?', [id], (err) => {
+          if (err) return res.status(500).json({ error: 'Failed to remove product from orders' });
+          db.query('DELETE FROM products WHERE id = ?', [id], (err, result) => {
+            if (err) {
+              if (err.code === 'ER_ROW_IS_REFERENCED_2') {
+                return res.status(400).json({ error: 'Cannot delete product: It is referenced in other records.' });
+              }
+              return res.status(500).json({ error: 'Failed to remove product' });
+            }
+            if (result.affectedRows === 0) {
+              return res.status(404).json({ error: 'Product not found' });
+            }
+            res.json({ success: true });
+          });
+        });
+      });
+    });
+  });
+});
+
+
 app.get('/contact-center', (req, res) => {
   db.query('SELECT id, type, value, description FROM contact_center', (err, results) => {
     if (err) return res.status(500).json({ error: 'Database error' });
