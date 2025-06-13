@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, View, Text, TextInput, TouchableOpacity, Alert,KeyboardAvoidingView, StyleSheet, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert,KeyboardAvoidingView, StyleSheet, Platform,ScrollView } from 'react-native';
 import axios from 'axios';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -86,7 +86,7 @@ export default function SignupScreen({ navigation }) {
 
   return (
 
-
+<ScrollView>
 <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -269,6 +269,7 @@ export default function SignupScreen({ navigation }) {
       
     </ScrollView>
     </KeyboardAvoidingView>
+    </ScrollView>
   );
 }
 
@@ -304,6 +305,7 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     backgroundColor: '#f9fafd',
     borderWidth: 1,
+    color: '#4b5563',
   },
   inputUnique: {
     borderColor: '#b2bec3',

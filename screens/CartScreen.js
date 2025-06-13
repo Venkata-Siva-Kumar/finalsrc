@@ -15,8 +15,8 @@ export default function CartScreen({ navigation, route }) {
   const { cart, setCart } = useContext(CartContext);
   const { user } = useContext(UserContext);
   const loggedInUserId = user?.id;
-  const loggedInMobile = route.params?.userMobile;
-
+  const loggedInMobile = user?.mobile;
+  
   const [addresses, setAddresses] = useState([]);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [addressForm, setAddressForm] = useState({
@@ -31,7 +31,7 @@ export default function CartScreen({ navigation, route }) {
   const [loading, setLoading] = useState(false);
   const [pincodeValid, setPincodeValid] = useState(false);
   const [variantQuantities, setVariantQuantities] = useState({});
-
+  
   // Fetch cart from backend every time screen is focused
   useFocusEffect(
     React.useCallback(() => {
@@ -63,14 +63,16 @@ export default function CartScreen({ navigation, route }) {
     }, [route.params?.orderedProductIds, cart])
   );
 
-  // Fetch addresses for the user
+ 
   useEffect(() => {
-    if (!loggedInMobile) return;
+  if (showSelectAddressModal) {
     fetch(`${API_BASE_URL}/addresses?user_id=${loggedInMobile}`)
       .then(res => res.json())
       .then(data => setAddresses(Array.isArray(data) ? data : []))
       .catch(() => setAddresses([]));
-  }, [loggedInMobile]);
+  }
+}, [showSelectAddressModal, loggedInMobile]);
+
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalAmount = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);

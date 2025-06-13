@@ -376,15 +376,7 @@ function AddProductTab({ onProductAdded }) {
         value={name}
         onChangeText={setName}
       />
-      {/* <Text style={styles.labelPrice}>Price</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Price"
-        placeholderTextColor="#888"
-        value={price}
-        onChangeText={setPrice}
-        keyboardType="numeric"
-      /> */}
+      
       <Text style={styles.labelDescription}>Description</Text>
       <TextInput
         style={styles.input}
@@ -861,7 +853,7 @@ function EarningsTab() {
   return (
   <View style={{ flex: 1, padding: 16 }}>
     <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 20 }}>
-      Total Earnings: <Text style={{ color: '#28a745' }}>₹{totalEarnings}</Text>
+      Total Earnings: <Text style={{ color: '#28a745' }}>₹{Number(totalEarnings).toFixed(2)}</Text>
     </Text>
     {/* Add From Date and To Date labels above the input fields */}
     <View style={{ flexDirection: 'row', marginBottom: 4 }}>

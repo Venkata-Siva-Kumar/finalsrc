@@ -23,8 +23,8 @@ export default function LoginScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [focusedField, setFocusedField] = useState('');
   const [scaleValue] = useState(new Animated.Value(1));
-  const { setUser } = useContext(UserContext);
-
+  const { setUser, setUserMobile } = useContext(UserContext);
+  
   const handleLogin = async () => {
   if (!mobile || !password) {
     Alert.alert('Error', 'Please enter mobile number and password');
@@ -52,7 +52,7 @@ export default function LoginScreen({ navigation }) {
         email: userData.email,
         // ...add other fields if needed
       });
-
+      setUserMobile(userData.mobile);
     
     navigation.replace('Main', { userMobile: userData.mobile }); // Pass mobile to Main
 

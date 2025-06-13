@@ -151,13 +151,25 @@ export default function HomeScreen({ navigation, route }) {
 
   // Render product item
   const renderItem = ({ item }) => {
-    // Only consider variants with a valid price
+    
     const validVariants = Array.isArray(item.variants)
       ? item.variants.filter(v => typeof v.price === 'number' && v.price > 0)
       : [];
 
     const lowestVariant = validVariants.length > 0
       ? validVariants.reduce((min, v) => (v.price < min.price ? v : min), validVariants[0])
+      : null;
+
+    const firstVariant = Array.isArray(item.variants) && item.variants.length > 0
+      ? item.variants.find(
+          v =>
+            v &&
+            v.price !== undefined &&
+            !isNaN(Number(v.price)) &&
+            Number(v.price) > 0 &&
+            typeof v.quantity_value === 'string' &&
+            v.quantity_value.length > 0
+        )
       : null;
 
     return (
@@ -168,23 +180,23 @@ export default function HomeScreen({ navigation, route }) {
         />
         <View style={styles.infoColumn}>
           <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-          {lowestVariant ? (
+          {firstVariant ? (
             <Text style={styles.price}>
-              ₹{lowestVariant.price.toFixed(2)} • {lowestVariant.quantity_value}
+              {firstVariant.quantity_value} • ₹{Number(firstVariant.price).toFixed(2)}
             </Text>
           ) : (
-            <Text style={styles.price}></Text>
+            <Text style={styles.price}>No variants</Text>
           )}
         </View>
         <TouchableOpacity
-  style={styles.addButton}
-  onPress={() => openVariantModal(item)}
->
-  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-    <Text style={styles.addButtonText}>Add</Text>
-    <Ionicons name="chevron-down" size={16} color="#fff" style={{ marginLeft: 2, marginTop: 4 }} />
-  </View>
-</TouchableOpacity>
+          style={styles.addButton}
+          onPress={() => openVariantModal(item)}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={styles.addButtonText}>Add</Text>
+            <Ionicons name="chevron-down" size={16} color="#fff" style={{ marginLeft: 2, marginTop: 4 }} />
+          </View>
+        </TouchableOpacity>
 
       </View>
     );
@@ -431,10 +443,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   name: {
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: '600',
     color: '#222',
-    marginBottom: 2,
+    marginBottom: 0,
   },
   price: {
     fontSize: 14,
