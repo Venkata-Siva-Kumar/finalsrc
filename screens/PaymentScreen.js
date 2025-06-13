@@ -71,7 +71,8 @@ export default function PaymentScreen({ navigation, route }) {
         mobile: userMobile,
         address_id: address_id,
         items: cart.map(item => ({
-          productId: item.id,
+          productId: item.product_id || item.id,
+          variantId: item.variant_id,
           quantity: item.quantity,
           price: item.price
         }))
@@ -90,12 +91,12 @@ export default function PaymentScreen({ navigation, route }) {
         setCart([]); // Clear cart in context
         setOrderSuccess(true);
         if (route?.params?.user_id) {
-        fetch(`${API_BASE_URL}/cart/clear`, {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: route.params.user_id }),
-        });
-      }
+          fetch(`${API_BASE_URL}/cart/clear`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: route.params.user_id }),
+          });
+        }
 
         // Show countdown and redirect
         setCountdown(1);

@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Image,
   ScrollView,
+  Modal,
 } from 'react-native';
 import axios from 'axios';
 import { TextInput } from 'react-native';
@@ -15,7 +16,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { CartContext } from './CartContext';
 import { API_BASE_URL } from '../config';
 import { Ionicons } from '@expo/vector-icons';
-import { UserContext } from '../UserContext'; // <-- Make sure you have this
+import { UserContext } from '../UserContext';
 
 export default function HomeScreen({ navigation, route }) {
   const [products, setProducts] = useState([]);
@@ -25,6 +26,9 @@ export default function HomeScreen({ navigation, route }) {
   const [selectedCategoryId, setSelectedCategoryId] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalProduct, setModalProduct] = useState(null);
+  const [variantQuantities, setVariantQuantities] = useState({}); // {variantId: quantity}
 
   // Get logged in user id from context
   const { user } = useContext(UserContext);
@@ -86,110 +90,221 @@ export default function HomeScreen({ navigation, route }) {
     React.useCallback(() => {
       const qtyObj = {};
       cart.forEach((item) => {
-        qtyObj[item.id] = item.quantity;
+        qtyObj[item.variant_id] = item.quantity;
       });
-      setQuantities(qtyObj);
+      setVariantQuantities(qtyObj);
     }, [cart])
   );
 
-  // Update quantity handler with backend sync
-  const updateQuantity = (product, delta) => {
-    const current = quantities[product.id] || 0;
-    const next = Math.max(0, Math.min(5, current + delta));
-    setQuantities(prev => ({ ...prev, [product.id]: next }));
+  // Add/update a variant to cart and sync with backend
+  const handleAddVariantToCart = (product, variant, quantity) => {
     setCart(prevCart => {
-      const updatedCart = prevCart.filter(item => item.id !== product.id);
-      if (next > 0) {
-        // Save to backend
-        if (loggedInUserId) {
-          axios.post(`${API_BASE_URL}/cart`, {
-            user_id: loggedInUserId,
-            product_id: product.id,
-            quantity: next,
-          }).catch(() => {});
-        }
-        return [...updatedCart, { ...product, quantity: next }];
-      } else {
-        // Remove from backend
-        if (loggedInUserId) {
-          axios.delete(`${API_BASE_URL}/cart`, {
-            data: { user_id: loggedInUserId, product_id: product.id }
-          }).catch(() => {});
-        }
-        return updatedCart;
-      }
-    });
-  };
-
-  // Add to cart handler with backend sync
-  const handleAdd = (product) => {
-    setQuantities((prev) => ({ ...prev, [product.id]: 1 }));
-    setCart((prevCart) => {
-      // Save to backend
-      if (loggedInUserId) {
-        axios.post(`${API_BASE_URL}/cart`, {
-          user_id: loggedInUserId,
-          product_id: product.id,
-          quantity: 1,
-        }).catch(() => {});
-      }
-      const existing = prevCart.find((item) => item.id === product.id);
+      const existing = prevCart.find(
+        item => item.product_id === product.id && item.variant_id === variant.id
+      );
       if (existing) {
-        return prevCart.map((item) =>
-          item.id === product.id ? { ...item, quantity: 1 } : item
+        return prevCart.map(item =>
+          item.product_id === product.id && item.variant_id === variant.id
+            ? { ...item, quantity }
+            : item
         );
       } else {
-        return [...prevCart, { ...product, quantity: 1 }];
+        return [
+          ...prevCart,
+          {
+            product_id: product.id,
+            variant_id: variant.id,
+            name: product.name,
+            quantity_value: variant.quantity_value,
+            price: variant.price,
+            quantity,
+            image_url: product.image_url,
+          },
+        ];
       }
     });
+
+    // Sync with backend
+    if (loggedInUserId) {
+      axios.post(`${API_BASE_URL}/cart`, {
+        user_id: loggedInUserId,
+        product_id: product.id,
+        variant_id: variant.id,
+        quantity,
+      }).catch(() => {});
+    }
+  };
+
+  // Open modal and initialize variantQuantities from cart for this product
+  const openVariantModal = (product) => {
+    setModalProduct(product);
+    const qtyObj = {};
+    product.variants.forEach(variant => {
+      const inCart = cart.find(
+        item => item.product_id === product.id && item.variant_id === variant.id
+      );
+      qtyObj[variant.id] = inCart ? inCart.quantity : 0;
+    });
+    setVariantQuantities(qtyObj);
+    setModalVisible(true);
   };
 
   // Render product item
   const renderItem = ({ item }) => {
-    const quantity = quantities[item.id] || 0;
+    // Only consider variants with a valid price
+    const validVariants = Array.isArray(item.variants)
+      ? item.variants.filter(v => typeof v.price === 'number' && v.price > 0)
+      : [];
+
+    const lowestVariant = validVariants.length > 0
+      ? validVariants.reduce((min, v) => (v.price < min.price ? v : min), validVariants[0])
+      : null;
+
     return (
       <View style={styles.card}>
-        <View style={styles.row}>
-          <Image
-            source={{
-              uri:
-                item.image_url && item.image_url !== 'NULL'
-                  ? item.image_url
-                  : 'https://via.placeholder.com/100',
-            }}
-            style={styles.image}
-          />
-          <View style={styles.infoColumn}>
-            <Text style={styles.name}>{item.name}</Text>
-            <Text style={styles.price}>₹{item.price}</Text>
-          </View>
-          <View style={styles.actionColumn}>
-            {quantity === 0 ? (
-              <TouchableOpacity onPress={() => handleAdd(item)} style={styles.addButton}>
-                <Text style={styles.addButtonText}>Add</Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.qtyRow}>
-                <TouchableOpacity
-                  onPress={() => updateQuantity(item, -1)}
-                  style={styles.qtyButton}
-                >
-                  <Text style={styles.qtyText}>−</Text>
-                </TouchableOpacity>
-                <Text style={styles.qtyValue}>{quantity}</Text>
-                <TouchableOpacity
-                  onPress={() => updateQuantity(item, 1)}
-                  style={styles.qtyButton}
-                >
-                  <Text style={styles.qtyText}>+</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
+        <Image
+          source={{ uri: item.image_url || 'https://via.placeholder.com/60' }}
+          style={styles.productImage}
+        />
+        <View style={styles.infoColumn}>
+          <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+          {lowestVariant ? (
+            <Text style={styles.price}>
+              ₹{lowestVariant.price.toFixed(2)} • {lowestVariant.quantity_value}
+            </Text>
+          ) : (
+            <Text style={styles.price}></Text>
+          )}
         </View>
+        <TouchableOpacity
+  style={styles.addButton}
+  onPress={() => openVariantModal(item)}
+>
+  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+    <Text style={styles.addButtonText}>Add</Text>
+    <Ionicons name="chevron-down" size={16} color="#fff" style={{ marginLeft: 2, marginTop: 4 }} />
+  </View>
+</TouchableOpacity>
+
       </View>
     );
   };
+
+  // Modal for variants
+  const renderVariantModal = () => (
+    <Modal
+      visible={modalVisible}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setModalVisible(false)}
+    >
+      <View style={{
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        justifyContent: 'flex-end',
+      }}>
+        <View style={{
+          backgroundColor: '#fff',
+          borderTopLeftRadius: 16,
+          borderTopRightRadius: 16,
+          padding: 16,
+          maxHeight: '60%',
+        }}>
+          <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 12 }}>
+            {modalProduct?.name}
+          </Text>
+          {modalProduct?.variants?.map((v, idx) => {
+            const qty = variantQuantities[v.id] || 0;
+
+            return (
+              <View key={v.id} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                <Text style={{ flex: 2 }}>{v.quantity_value}</Text>
+                <Text style={{ flex: 2, textDecorationLine: v.mrp && v.mrp > v.price ? 'line-through' : 'none', color: '#888' }}>
+                  {v.mrp && v.mrp > v.price ? `₹${v.mrp}` : ''}
+                </Text>
+                <Text style={{ flex: 2, fontWeight: 'bold', color: '#222' }}>₹{v.price}</Text>
+                {qty > 0 ? (
+                  <View style={{ flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (qty > 1) {
+                          const nextQty = qty - 1;
+                          setVariantQuantities(prev => ({ ...prev, [v.id]: nextQty }));
+                          handleAddVariantToCart(modalProduct, v, nextQty);
+                        } else if (qty === 1) {
+                          setVariantQuantities(prev => ({ ...prev, [v.id]: 0 }));
+                          setCart(prevCart =>
+                            prevCart.filter(
+                              item => !(item.product_id === modalProduct.id && item.variant_id === v.id)
+                            )
+                          );
+                          if (loggedInUserId) {
+                            axios.delete(`${API_BASE_URL}/cart`, {
+                              data: {
+                                user_id: loggedInUserId,
+                                product_id: modalProduct.id,
+                                variant_id: v.id,
+                              }
+                            }).catch(() => {});
+                          }
+                        }
+                      }}
+                      style={{
+                        backgroundColor: '#28a745',
+                        borderRadius: 12,
+                        width: 28,
+                        height: 28,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginHorizontal: 4,
+                      }}
+                    >
+                      <Text style={{ color: '#fff', fontSize: 18 }}>-</Text>
+                    </TouchableOpacity>
+                    <Text style={{ minWidth: 18, textAlign: 'center', fontSize: 16 }}>{qty}</Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (qty < 5) {
+                          const nextQty = qty + 1;
+                          setVariantQuantities(prev => ({ ...prev, [v.id]: nextQty }));
+                          handleAddVariantToCart(modalProduct, v, nextQty);
+                        }
+                      }}
+                      disabled={qty >= 5}
+                      style={{
+                        backgroundColor: qty >= 5 ? '#ccc' : '#28a745',
+                        borderRadius: 12,
+                        width: 28,
+                        height: 28,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginHorizontal: 4,
+                      }}
+                    >
+                      <Text style={{ color: '#fff', fontSize: 18 }}>+</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.addButton, { flex: 1 }]}
+                    onPress={() => {
+                      setVariantQuantities(prev => ({ ...prev, [v.id]: 1 }));
+                      handleAddVariantToCart(modalProduct, v, 1);
+                    }}
+                  >
+                    <Text style={styles.addButtonText}>Add</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })}
+          <TouchableOpacity onPress={() => setModalVisible(false)} style={{ marginTop: 10, alignSelf: 'center' }}>
+            <Text style={{ color: '#007bff', fontSize: 16 }}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: 'transparent' }}>
@@ -283,79 +398,61 @@ export default function HomeScreen({ navigation, route }) {
           )}
         </View>
       </View>
+      {renderVariantModal()}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 15,
-    elevation: 3,
-  },
-  row: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 14,
+    marginHorizontal: 2,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.07,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
   },
-  image: {
-    width: 70,
-    height: 70,
+  productImage: {
+    width: 50,
+    height: 50,
     borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: '#f2f2f2',
   },
   infoColumn: {
     flex: 1,
-    marginLeft: 12,
     justifyContent: 'center',
   },
   name: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
+    color: '#222',
+    marginBottom: 2,
   },
   price: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#555',
-    marginTop: 4,
-  },
-  actionColumn: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  qtyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  qtyButton: {
-    backgroundColor: '#ddd',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 5,
-  },
-  qtyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  qtyValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginHorizontal: 8,
-    minWidth: 20,
-    textAlign: 'center',
   },
   addButton: {
     backgroundColor: '#28a745',
-    paddingHorizontal: 20,
-    paddingVertical: 6,
+    paddingHorizontal: 28,
+    paddingVertical: 8,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    width: 90,
+    alignSelf: 'center',
   },
   addButtonText: {
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
   },
+  // ...other styles...
 });

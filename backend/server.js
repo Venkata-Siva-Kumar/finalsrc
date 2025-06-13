@@ -69,56 +69,59 @@ app.post('/login', (req, res) => {
 });
 
 app.get('/products', (req, res) => {
-  const categoryId = req.query.category_id;
-  const search = req.query.search;
+  const { category_id, search } = req.query;
   let sql = `
-  SELECT p.*, c.name AS category_name, i.image_data, i.mime_type
-  FROM products p
-  LEFT JOIN categories c ON p.category_id = c.id
-  LEFT JOIN images i ON i.product_id = p.id
-    AND i.id = (
-      SELECT MAX(id) FROM images WHERE product_id = p.id
-    )
-`;
-  let conditions = [];
-  let params = [];
-
-  if (categoryId) {
-    conditions.push('p.category_id = ?');
-    params.push(categoryId);
+    SELECT p.*, i.image_data, i.mime_type
+    FROM products p
+    LEFT JOIN images i ON p.id = i.product_id
+    WHERE p.status = 'enabled'
+  `;
+  const params = [];
+  if (category_id) {
+    sql += ' AND p.category_id = ?';
+    params.push(category_id);
   }
   if (search) {
-    conditions.push('(p.name LIKE ? OR p.description LIKE ?)');
-    params.push(`%${search}%`, `%${search}%`);
+    sql += ' AND p.name LIKE ?';
+    params.push(`%${search}%`);
   }
-  if (conditions.length > 0) {
-    sql += ' WHERE ' + conditions.join(' AND ');
-  }
-
   db.query(sql, params, (err, results) => {
-    if (err) {
-      console.error('DB Error:', err);
-      res.status(500).json({ error: 'Database error' });
-    } else {
-      const products = results.map(row => ({
-        ...row,
-        image_url: row.image_data
-          ? `data:${row.mime_type || 'image/jpeg'};base64,${row.image_data.toString('base64')}`
-          : null,
-      }));
+    if (err) return res.status(500).json({ error: 'Database error' });
+    const products = [];
+    const productMap = {};
+    results.forEach(row => {
+      if (!productMap[row.id]) {
+        productMap[row.id] = {
+          id: row.id,
+          name: row.name,
+          description: row.description,
+          category_id: row.category_id,
+          status: row.status,
+          image_url: row.image_data
+            ? `data:${row.mime_type || 'image/jpeg'};base64,${row.image_data.toString('base64')}`
+            : null,
+          variants: [],
+        };
+        products.push(productMap[row.id]);
+      }
+    });
+    db.query('SELECT * FROM product_variants', (err2, variantRows) => {
+      if (err2) return res.status(500).json({ error: 'DB error' });
+      variantRows.forEach(v => {
+        if (productMap[v.product_id]) {
+          productMap[v.product_id].variants.push(v);
+        }
+      });
       res.json(products);
-    }
+    });
   });
 });
-
 
 app.post('/place-order', (req, res) => {
   let { orderId, totalAmount, orderDate, orderStatus, user_id, mobile, address_id, items } = req.body;
 
-  // If user_id is not provided but mobile is, look up user_id
   function getUserIdAndInsertOrder() {
     if (!user_id && mobile) {
-      // Remove +91 and non-digits, keep last 10 digits
       mobile = (mobile || '').replace(/^\+91/, '').replace(/\D/g, '').slice(-10);
       db.query('SELECT id FROM users WHERE mobile = ?', [mobile], (err, results) => {
         if (err || results.length === 0) {
@@ -148,10 +151,11 @@ app.post('/place-order', (req, res) => {
         }
 
         // Insert order items
-        const orderItemsSql = `INSERT INTO order_items (orderId, productId, quantity, price) VALUES ?`;
+        const orderItemsSql = `INSERT INTO order_items (orderId, productId, variantId, quantity, price) VALUES ?`;
         const orderItemsValues = items.map(item => [
           orderId,
           item.productId,
+          item.variantId,
           item.quantity,
           item.price
         ]);
@@ -247,91 +251,81 @@ app.post('/admin-login', (req, res) => {
     });
   });
 });
-// ✅ Add Product route
-app.post('/products', (req, res) => {
-  const { name, price, description, category } = req.body;
-  db.query('SELECT id FROM categories WHERE name = ?', [category], (err, results) => {
-    if (err || results.length === 0) {
-      return res.status(400).json({ error: 'Invalid category' });
-    }
-    const category_id = results[0].id;
-    db.query(
-      'INSERT INTO products (name, price, description, category_id) VALUES (?, ?, ?, ?)',
-      [name, price, description, category_id],
-      (err, result) => {
-        if (err) {
-          if (err.code === 'ER_DUP_ENTRY') {
-            return res.status(409).json({ error: 'Product name already exists' });
-          }
-          return res.status(500).json({ error: 'Database error' });
-        }
-        res.json({ id: result.insertId });
-      }
-    );
-  });
-});
+
 
 app.get('/orders', (req, res) => {
-  const { user_id } = req.query;
+  const { user_id, mobile } = req.query;
   let sql = `
-    SELECT o.*, u.mobile AS userMobile, a.name AS addressName, a.addr_mobile, a.pincode, a.locality, a.address, a.city, a.state, a.landmark
+    SELECT o.*, a.*, u.mobile as user_mobile
     FROM orders o
-    LEFT JOIN users u ON o.user_id = u.id
     LEFT JOIN addresses a ON o.address_id = a.id
+    LEFT JOIN users u ON o.user_id = u.id
+    WHERE 1
   `;
-  let params = [];
-
+  const params = [];
   if (user_id) {
-    sql += ' WHERE o.user_id = ?';
+    sql += ' AND o.user_id = ?';
     params.push(user_id);
+  } else if (mobile) {
+    sql += ' AND u.mobile = ?';
+    params.push(mobile);
   }
+  sql += ' ORDER BY o.orderDate DESC';
 
   db.query(sql, params, (err, orders) => {
-    if (err) return res.status(500).json({ message: 'Error fetching orders' });
+    if (err) return res.status(500).json({ error: 'DB error' });
     if (!orders.length) return res.json([]);
 
     const orderIds = orders.map(o => o.orderId);
-    if (orderIds.length === 0) return res.json([]);
+    if (!orderIds.length) return res.json([]);
 
-    const placeholders = orderIds.map(() => '?').join(',');
-    const itemsSql = `
-      SELECT oi.*, p.name 
-      FROM order_items oi 
-      JOIN products p ON oi.productId = p.id 
-      WHERE oi.orderId IN (${placeholders})
-    `;
-
-    db.query(itemsSql, orderIds, (err, items) => {
-      if (err) return res.status(500).json({ message: 'Error fetching order items' });
-
-      const itemsByOrder = {};
-      items.forEach(item => {
-        if (!itemsByOrder[item.orderId]) itemsByOrder[item.orderId] = [];
-        itemsByOrder[item.orderId].push({
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price,
-          productId: item.productId
+    db.query(
+      `SELECT 
+         oi.*, 
+         p.name AS product_name, 
+         v.quantity_value, 
+         v.price AS variant_price
+       FROM order_items oi
+       JOIN products p ON oi.productId = p.id
+       JOIN product_variants v ON oi.variantId = v.id
+       WHERE oi.orderId IN (?)`,
+      [orderIds],
+      (err2, items) => {
+        if (err2) return res.status(500).json({ error: 'DB error' });
+        // Group items by orderId
+        const itemsByOrder = {};
+        items.forEach(item => {
+          if (!itemsByOrder[item.orderId]) itemsByOrder[item.orderId] = [];
+          itemsByOrder[item.orderId].push({
+            name: item.product_name,
+            quantity: item.quantity,
+            price: item.variant_price,
+            quantity_value: item.quantity_value,
+            product_id: item.productId,
+            variant_id: item.variantId,
+          });
         });
-      });
-
-      const ordersWithItems = orders.map(order => ({
-        ...order,
-        deliveryAddress: {
-          name: order.addressName,
-          mobile: order.addr_mobile,
-          pincode: order.pincode,
-          locality: order.locality,
-          address: order.address,
-          city: order.city,
-          state: order.state,
-          landmark: order.landmark,
-        },
-        items: itemsByOrder[order.orderId] || [],
-      }));
-
-      res.json(ordersWithItems);
-    });
+        // Attach items to orders
+        const result = orders.map(order => ({
+          orderId: order.orderId,
+          orderDate: order.orderDate,
+          orderStatus: order.orderStatus,
+          totalAmount: order.totalAmount,
+          items: itemsByOrder[order.orderId] || [],
+          deliveryAddress: {
+            name: order.name,
+            mobile: order.addr_mobile,
+            address: order.address,
+            locality: order.locality,
+            city: order.city,
+            state: order.state,
+            pincode: order.pincode,
+            landmark: order.landmark,
+          },
+        }));
+        res.json(result);
+      }
+    );
   });
 });
 
@@ -632,72 +626,67 @@ app.put('/products/:id/status', (req, res) => {
 });
 
 
-app.put('/products/:id', (req, res) => {
-  const { id } = req.params;
-  const { name, price } = req.body;
-  if (!name || !price) {
-    return res.status(400).json({ error: 'Name and price are required' });
-  }
+// Add Product with variants
+app.post('/products', (req, res) => {
+  const { name, description, category_id, status, variants } = req.body;
   db.query(
-    'UPDATE products SET name = ?, price = ? WHERE id = ?',
-    [name, price, id],
+    'INSERT INTO products (name, description, category_id, status) VALUES (?, ?, ?, ?)',
+    [name, description, category_id, status || 'enabled'],
     (err, result) => {
-      if (err) {
-        if (err.code === 'ER_DUP_ENTRY') {
-          return res.status(409).json({ error: 'Product name already exists' });
-        }
-        return res.status(500).json({ error: 'Database error' });
+      if (err) return res.status(500).json({ error: 'DB error' });
+      const productId = result.insertId;
+      if (Array.isArray(variants) && variants.length > 0) {
+        const values = variants.map(
+          v => [productId, v.quantity_value, v.price, v.mrp || null]
+        );
+        db.query(
+          'INSERT INTO product_variants (product_id, quantity_value, price, mrp) VALUES ?',
+          [values],
+          (err2) => {
+            if (err2) return res.status(500).json({ error: 'DB error' });
+            res.json({ id: productId });
+          }
+        );
+      } else {
+        res.json({ id: productId });
       }
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ error: 'Product not found' });
-      }
-      res.json({ success: true });
     }
   );
 });
 
-
-app.delete('/products/:id', (req, res) => {
+// Update Product and its variants
+app.put('/products/:id', (req, res) => {
+  const { name, description, category_id, status, variants } = req.body;
   const { id } = req.params;
-
-  // Check if there are any pending orders for this product
-  const checkPendingSql = `
-    SELECT oi.orderId
-    FROM order_items oi
-    JOIN orders o ON oi.orderId = o.orderId
-    WHERE oi.productId = ? AND o.orderStatus != 'Delivered'
-    LIMIT 1
-  `;
-  db.query(checkPendingSql, [id], (err, results) => {
-    if (err) return res.status(500).json({ error: 'Database error' });
-    if (results.length > 0) {
-      // There is at least one pending order
-      return res.status(400).json({ error: 'Cannot delete: Product has orders that are not delivered.' });
-    }
-
-    // No pending orders, proceed to delete related data and the product
-    db.query('DELETE FROM images WHERE product_id = ?', [id], (err) => {
-      if (err) return res.status(500).json({ error: 'Failed to remove product images' });
-      db.query('DELETE FROM cart WHERE product_id = ?', [id], (err) => {
-        if (err) return res.status(500).json({ error: 'Failed to remove product from cart' });
-        db.query('DELETE FROM order_items WHERE productId = ?', [id], (err) => {
-          if (err) return res.status(500).json({ error: 'Failed to remove product from orders' });
-          db.query('DELETE FROM products WHERE id = ?', [id], (err, result) => {
-            if (err) {
-              if (err.code === 'ER_ROW_IS_REFERENCED_2') {
-                return res.status(400).json({ error: 'Cannot delete product: It is referenced in other records.' });
+  db.query(
+    'UPDATE products SET name=?, description=?, category_id=?, status=? WHERE id=?',
+    [name, description, category_id, status || 'enabled', id],
+    (err) => {
+      if (err) return res.status(500).json({ error: 'DB error' });
+      if (Array.isArray(variants)) {
+        db.query('DELETE FROM product_variants WHERE product_id=?', [id], (err2) => {
+          if (err2) return res.status(500).json({ error: 'DB error' });
+          if (variants.length > 0) {
+            const values = variants.map(
+              v => [id, v.quantity_value, v.price, v.mrp || null]
+            );
+            db.query(
+              'INSERT INTO product_variants (product_id, quantity_value, price, mrp) VALUES ?',
+              [values],
+              (err3) => {
+                if (err3) return res.status(500).json({ error: 'DB error' });
+                res.json({ success: true });
               }
-              return res.status(500).json({ error: 'Failed to remove product' });
-            }
-            if (result.affectedRows === 0) {
-              return res.status(404).json({ error: 'Product not found' });
-            }
+            );
+          } else {
             res.json({ success: true });
-          });
+          }
         });
-      });
-    });
-  });
+      } else {
+        res.json({ success: true });
+      }
+    }
+  );
 });
 
 
@@ -738,22 +727,30 @@ app.get('/earnings', (req, res) => {
 // Get all cart items for a user (with product details)
 app.get('/cart', (req, res) => {
   const { user_id } = req.query;
-  if (!user_id) {
-    return res.status(400).json({ error: 'Missing user_id' });
-  }
+  if (!user_id) return res.status(400).json({ error: 'Missing user_id' });
   const sql = `
-    SELECT c.product_id AS id, c.quantity, p.name, p.price, 
-           COALESCE(i.image_data, NULL) AS image_data, i.mime_type
+    SELECT 
+      c.product_id, 
+      c.variant_id,
+      c.quantity, 
+      p.name, 
+      v.quantity_value, 
+      v.price, 
+      COALESCE(i.image_data, NULL) AS image_data, 
+      i.mime_type
     FROM cart c
     JOIN products p ON c.product_id = p.id
+    JOIN product_variants v ON c.variant_id = v.id
     LEFT JOIN images i ON i.product_id = p.id
     WHERE c.user_id = ?
   `;
   db.query(sql, [user_id], (err, results) => {
     if (err) return res.status(500).json({ error: 'Database error' });
     const cart = results.map(row => ({
-      id: row.id,
+      product_id: row.product_id,
+      variant_id: row.variant_id,
       name: row.name,
+      quantity_value: row.quantity_value,
       price: row.price,
       quantity: row.quantity,
       image_url: row.image_data
@@ -766,15 +763,15 @@ app.get('/cart', (req, res) => {
 
 // Add or update a cart item
 app.post('/cart', (req, res) => {
-  const { user_id, product_id, quantity } = req.body;
-  if (!user_id || !product_id || !quantity) {
+  const { user_id, product_id, variant_id, quantity } = req.body;
+  if (!user_id || !product_id || !variant_id || !quantity) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
   db.query(
-    `INSERT INTO cart (user_id, product_id, quantity)
-     VALUES (?, ?, ?)
+    `INSERT INTO cart (user_id, product_id, variant_id, quantity)
+     VALUES (?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE quantity = VALUES(quantity)`,
-    [user_id, product_id, quantity],
+    [user_id, product_id, variant_id, quantity],
     (err, result) => {
       if (err) {
         return res.status(500).json({ error: 'Database error' });
@@ -784,15 +781,14 @@ app.post('/cart', (req, res) => {
   );
 });
 
-// Remove a cart item
 app.delete('/cart', (req, res) => {
-  const { user_id, product_id } = req.body;
-  if (!user_id || !product_id) {
+  const { user_id, product_id, variant_id } = req.body;
+  if (!user_id || !product_id || !variant_id) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
   db.query(
-    `DELETE FROM cart WHERE user_id = ? AND product_id = ?`,
-    [user_id, product_id],
+    `DELETE FROM cart WHERE user_id = ? AND product_id = ? AND variant_id = ?`,
+    [user_id, product_id, variant_id],
     (err, result) => {
       if (err) {
         return res.status(500).json({ error: 'Database error' });
@@ -824,7 +820,25 @@ app.get('/pincodes', (req, res) => {
   });
 });
 
-// ...existing code...
+// Delete a product and its variants/images
+app.delete('/products/:id', (req, res) => {
+  const productId = req.params.id;
+  // Delete variants first
+  db.query('DELETE FROM product_variants WHERE product_id = ?', [productId], (err) => {
+    if (err) return res.status(500).json({ error: 'Failed to delete variants' });
+    // Delete images next
+    db.query('DELETE FROM images WHERE product_id = ?', [productId], (err2) => {
+      if (err2) return res.status(500).json({ error: 'Failed to delete images' });
+      // Now delete the product
+      db.query('DELETE FROM products WHERE id = ?', [productId], (err3, result) => {
+        if (err3) return res.status(500).json({ error: 'Failed to delete product' });
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'Product not found' });
+        res.json({ success: true });
+      });
+    });
+  });
+});
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running on http://0.0.0.0:${PORT}`));

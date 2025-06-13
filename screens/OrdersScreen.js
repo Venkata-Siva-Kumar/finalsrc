@@ -44,8 +44,14 @@ export default function OrdersScreen({ route, navigation }) {
       fetch(url)
         .then(res => res.json())
         .then(data => {
-          setOrders(data || []);
-          setFilteredOrders(data || []);
+          const safeData = Array.isArray(data)
+            ? data.map(order => ({
+                ...order,
+                items: Array.isArray(order.items) ? order.items : [],
+              }))
+            : [];
+          setOrders(safeData);
+          setFilteredOrders(safeData);
         })
         .catch(() => {
           setOrders([]);
@@ -111,46 +117,48 @@ export default function OrdersScreen({ route, navigation }) {
               Status: {item.orderStatus}
             </Text>
             <Text style={{ fontWeight: 'bold' }}>Total : ₹{item.totalAmount}</Text>
-           {item.items && item.items.length > 0 && (
-  <>
-    <Text style={{ marginTop: 8, fontWeight: 'bold' }}>Products:</Text>
-    {item.items.map((prod, idx) => (
-      <View key={idx} style={{ marginLeft: 10, marginBottom: 4 }}>
-        <Text>• {prod.name} x {prod.quantity} --- @ ₹{prod.price * prod.quantity}</Text>
-      </View>
-    ))}
-  </>
-)}
-        <Text style={{ marginTop: 8, fontWeight: 'bold' }}>Delivery Address:</Text>
-        {item.deliveryAddress && typeof item.deliveryAddress === 'object' && !Array.isArray(item.deliveryAddress) ? (
-          <>
-            {item.deliveryAddress.name ? <Text>Name: {item.deliveryAddress.name}</Text> : null}
-            {item.deliveryAddress.mobile ? <Text>Mobile: {item.deliveryAddress.mobile}</Text> : null}
-            {item.deliveryAddress.address && typeof item.deliveryAddress.address === 'object' ? (
+            {Array.isArray(item.items) && item.items.length > 0 && (
               <>
-                {item.deliveryAddress.address.street ? <Text>Street: {item.deliveryAddress.address.street}</Text> : null}
-                {item.deliveryAddress.address.area ? <Text>Area: {item.deliveryAddress.address.area}</Text> : null}
-                {item.deliveryAddress.address.house ? <Text>House: {item.deliveryAddress.address.house}</Text> : null}
+                <Text style={{ marginTop: 8, fontWeight: 'bold' }}>Products:</Text>
+                {item.items.map((prod, idx) => (
+                  <View key={idx} style={{ marginLeft: 10, marginBottom: 4 }}>
+                    <Text>
+                      {prod.name} ({prod.quantity_value}) x {prod.quantity} --- @ ₹{prod.price * prod.quantity}
+                    </Text>
+                  </View>
+                ))}
+              </>
+            )}
+            <Text style={{ marginTop: 8, fontWeight: 'bold' }}>Delivery Address:</Text>
+            {item.deliveryAddress && typeof item.deliveryAddress === 'object' && !Array.isArray(item.deliveryAddress) ? (
+              <>
+                {item.deliveryAddress.name ? <Text>Name: {item.deliveryAddress.name}</Text> : null}
+                {item.deliveryAddress.mobile ? <Text>Mobile: {item.deliveryAddress.mobile}</Text> : null}
+                {item.deliveryAddress.address && typeof item.deliveryAddress.address === 'object' ? (
+                  <>
+                    {item.deliveryAddress.address.street ? <Text>Street: {item.deliveryAddress.address.street}</Text> : null}
+                    {item.deliveryAddress.address.area ? <Text>Area: {item.deliveryAddress.address.area}</Text> : null}
+                    {item.deliveryAddress.address.house ? <Text>House: {item.deliveryAddress.address.house}</Text> : null}
+                  </>
+                ) : (
+                  item.deliveryAddress.address ? <Text>Address: {item.deliveryAddress.address}</Text> : null
+                )}
+                {item.deliveryAddress.locality ? <Text>Locality: {item.deliveryAddress.locality}</Text> : null}
+                {item.deliveryAddress.city ? <Text>City: {item.deliveryAddress.city}</Text> : null}
+                {item.deliveryAddress.state ? <Text>State: {item.deliveryAddress.state}</Text> : null}
+                {item.deliveryAddress.pincode ? <Text>Pincode: {item.deliveryAddress.pincode}</Text> : null}
+                {item.deliveryAddress.landmark ? <Text>Landmark: {item.deliveryAddress.landmark}</Text> : null}
               </>
             ) : (
-              item.deliveryAddress.address ? <Text>Address: {item.deliveryAddress.address}</Text> : null
+              <Text>{typeof item.deliveryAddress === 'string' ? item.deliveryAddress : 'N/A'}</Text>
             )}
-            {item.deliveryAddress.locality ? <Text>Locality: {item.deliveryAddress.locality}</Text> : null}
-            {item.deliveryAddress.city ? <Text>City: {item.deliveryAddress.city}</Text> : null}
-            {item.deliveryAddress.state ? <Text>State: {item.deliveryAddress.state}</Text> : null}
-            {item.deliveryAddress.pincode ? <Text>Pincode: {item.deliveryAddress.pincode}</Text> : null}
-            {item.deliveryAddress.landmark ? <Text>Landmark: {item.deliveryAddress.landmark}</Text> : null}
-          </>
-        ) : (
-          <Text>{typeof item.deliveryAddress === 'string' ? item.deliveryAddress : 'N/A'}</Text>
+          </View>
         )}
-                  </View>
-                )}
-                ListEmptyComponent={<Text>No orders found.</Text>}
-              />
-            </View>
-          );
-  }
+        ListEmptyComponent={<Text>No orders found.</Text>}
+      />
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#fff' },

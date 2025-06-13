@@ -9,6 +9,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { CartContext } from './CartContext';
 import { API_BASE_URL } from '../config';
 import { UserContext } from '../UserContext';
+import axios from 'axios';
 
 export default function CartScreen({ navigation, route }) {
   const { cart, setCart } = useContext(CartContext);
@@ -20,7 +21,7 @@ export default function CartScreen({ navigation, route }) {
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [addressForm, setAddressForm] = useState({
     name: '', addr_mobile: '', pincode: '', locality: '',
-    address: '', city: '', state: '', landmark: '',
+    address: '', city: '', state: '', landmark:'',
   });
   const [showSelectAddressModal, setShowSelectAddressModal] = useState(false);
   const [selectedAddressIndex, setSelectedAddressIndex] = useState(null);
@@ -29,6 +30,7 @@ export default function CartScreen({ navigation, route }) {
   const [location, setLocation] = useState('');
   const [loading, setLoading] = useState(false);
   const [pincodeValid, setPincodeValid] = useState(false);
+  const [variantQuantities, setVariantQuantities] = useState({});
 
   // Fetch cart from backend every time screen is focused
   useFocusEffect(
@@ -50,7 +52,11 @@ export default function CartScreen({ navigation, route }) {
   useFocusEffect(
     React.useCallback(() => {
       if (route.params?.orderedProductIds) {
-        const updatedCart = cart.filter(item => !route.params.orderedProductIds.includes(item.id));
+        const updatedCart = cart.filter(item =>
+          !route.params.orderedProductIds.some(
+            id => id.product_id === item.product_id && id.variant_id === item.variant_id
+          )
+        );
         setCart(updatedCart);
         navigation.setParams({ orderedProductIds: undefined });
       }
@@ -70,17 +76,19 @@ export default function CartScreen({ navigation, route }) {
   const totalAmount = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   // Update cart quantity and sync to backend
-  const handleQuantityChange = (productId, newQuantity) => {
+  const handleQuantityChange = (productId, variantId, newQuantity) => {
     if (newQuantity > 5) {
       Alert.alert('Limit Reached', 'You can only add up to 5 units of each product.');
       return;
     }
     if (newQuantity <= 0) {
-      handleRemove(productId);
+      handleRemove(productId, variantId);
       return;
     }
     const updatedCart = cart.map(item =>
-      item.id === productId ? { ...item, quantity: newQuantity } : item
+      item.product_id === productId && item.variant_id === variantId
+        ? { ...item, quantity: newQuantity }
+        : item
     );
     setCart(updatedCart);
 
@@ -92,6 +100,7 @@ export default function CartScreen({ navigation, route }) {
         body: JSON.stringify({
           user_id: loggedInUserId,
           product_id: productId,
+          variant_id: variantId,
           quantity: newQuantity,
         }),
       });
@@ -99,8 +108,10 @@ export default function CartScreen({ navigation, route }) {
   };
 
   // Remove item from cart and sync to backend
-  const handleRemove = (productId) => {
-    const updatedCart = cart.filter(item => item.id !== productId);
+  const handleRemove = (productId, variantId) => {
+    const updatedCart = cart.filter(
+      item => !(item.product_id === productId && item.variant_id === variantId)
+    );
     setCart(updatedCart);
 
     // Remove from backend
@@ -111,6 +122,7 @@ export default function CartScreen({ navigation, route }) {
         body: JSON.stringify({
           user_id: loggedInUserId,
           product_id: productId,
+          variant_id: variantId,
         }),
       });
     }
@@ -120,13 +132,13 @@ export default function CartScreen({ navigation, route }) {
   const [allowedPincodes, setAllowedPincodes] = useState([]);
 
   useEffect(() => {
-  fetch(`${API_BASE_URL}/pincodes`)
-    .then(res => res.json())
-    .then(data => {
-      if (Array.isArray(data)) setAllowedPincodes(data);
-    })
-    .catch(() => setAllowedPincodes([]));
-}, []);
+    fetch(`${API_BASE_URL}/pincodes`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setAllowedPincodes(data);
+      })
+      .catch(() => setAllowedPincodes([]));
+  }, []);
 
   const validatePincode = async () => {
     const isValidFormat = /^\d{6}$/.test(pincode);
@@ -198,7 +210,6 @@ export default function CartScreen({ navigation, route }) {
           }),
         });
         const responseText = await response.text();
-       // console.log('Update response:', response.status, await response.text());
         if (!response.ok) throw new Error('Failed to update address');
         savedAddress = JSON.parse(responseText);
         setAddresses(prev => {
@@ -272,47 +283,27 @@ export default function CartScreen({ navigation, route }) {
 
   const renderItem = ({ item }) => (
     <View style={styles.item}>
-      <Image
-        source={{ uri: item.image_url && item.image_url !== 'NULL' ? item.image_url : 'https://via.placeholder.com/80' }}
-        style={styles.image}
-      />
+      <Image source={{ uri: item.image_url || 'https://via.placeholder.com/80' }} style={styles.image} />
       <View style={styles.info}>
         <Text style={styles.name}>{item.name}</Text>
-        <Text style={styles.details}>Qty: {item.quantity} | Price: ₹{item.price} | Subtotal: ₹{item.price * item.quantity}</Text>
+        <Text style={styles.details}>
+          {item.quantity_value} | Price: ₹{item.price} | Qty: {item.quantity}
+        </Text>
+        <Text style={styles.details}>Subtotal: ₹{item.price * item.quantity}</Text>
       </View>
       <View style={styles.quantityControls}>
         <TouchableOpacity
           style={styles.quantityButton}
-          onPress={() => {
-            if (item.quantity > 1) {
-              handleQuantityChange(item.id, item.quantity - 1);
-            } else {
-              Alert.alert(
-                'Remove Item?',
-                'Do you want to remove this item from the cart?',
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Remove',
-                    style: 'destructive',
-                    onPress: () => handleRemove(item.id),
-                  },
-                ]
-              );
-            }
-          }}
+          onPress={() => handleQuantityChange(item.product_id, item.variant_id, item.quantity - 1)}
         >
           <Text style={styles.quantityButtonText}>-</Text>
         </TouchableOpacity>
-
         <Text style={styles.quantityText}>{item.quantity}</Text>
-
         <TouchableOpacity
-          style={[styles.quantityButton, item.quantity >= 5 && { backgroundColor: '#eee' }]}
-          onPress={() => handleQuantityChange(item.id, item.quantity + 1)}
-          disabled={item.quantity >= 5}
+          style={styles.quantityButton}
+          onPress={() => handleQuantityChange(item.product_id, item.variant_id, item.quantity + 1)}
         >
-          <Text style={[styles.quantityButtonText, item.quantity >= 5 && { color: '#aaa' }]}>+</Text>
+          <Text style={styles.quantityButtonText}>+</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -345,14 +336,8 @@ export default function CartScreen({ navigation, route }) {
     }
     const selectedAddress = addresses[selectedAddressIndex];
     const cleanMobile = (loggedInMobile || '').replace(/^\+91/, '').replace(/\D/g, '').slice(-10);
-    const minimalCart = cart.map(item => ({
-      id: item.id,
-      name: item.name,
-      price: item.price,
-      quantity: item.quantity,
-    }));
     navigation.navigate('Payment', {
-      cart: minimalCart,
+      cart,
       userMobile: cleanMobile,
       selectedAddress,
       totalAmount,
@@ -396,6 +381,46 @@ export default function CartScreen({ navigation, route }) {
     );
   };
 
+  // This function is used by your HomeScreen/modal, not directly here
+  const handleAddVariantToCart = (product, variant) => {
+    const quantity = variantQuantities[variant.id] || 1;
+    setCart(prevCart => {
+      const existing = prevCart.find(
+        item => item.product_id === product.id && item.variant_id === variant.id
+      );
+      if (existing) {
+        return prevCart.map(item =>
+          item.product_id === product.id && item.variant_id === variant.id
+            ? { ...item, quantity }
+            : item
+        );
+      } else {
+        return [
+          ...prevCart,
+          {
+            product_id: product.id,
+            variant_id: variant.id,
+            name: product.name,
+            quantity_value: variant.quantity_value,
+            price: variant.price,
+            quantity,
+            image_url: product.image_url,
+          },
+        ];
+      }
+    });
+
+    // Sync with backend
+    if (loggedInUserId) {
+      axios.post(`${API_BASE_URL}/cart`, {
+        user_id: loggedInUserId,
+        product_id: product.id,
+        variant_id: variant.id,
+        quantity,
+      }).catch(() => {});
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.pincodeContainer}>
@@ -423,7 +448,6 @@ export default function CartScreen({ navigation, route }) {
       {selectedAddressIndex !== null ? (
         <View style={{ marginBottom: 10, backgroundColor: '#e6f7ff', padding: 12, borderRadius: 6 }}>
           <Text style={{ fontWeight: 'bold' }}>Deliver To:</Text>
-          
           <Text style={{ fontSize: 14 }}>
             Name: {addresses[selectedAddressIndex].name}
           </Text>
@@ -448,7 +472,6 @@ export default function CartScreen({ navigation, route }) {
               })()
             }
           </Text>
-
           <Text style={{ fontSize: 14 }}>
             Locality: {addresses[selectedAddressIndex].locality}
           </Text>
@@ -643,7 +666,7 @@ export default function CartScreen({ navigation, route }) {
 
       <FlatList
         data={cart}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => `${item.product_id}_${item.variant_id}`}
         renderItem={renderItem}
         ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20 }}>Your cart is empty.</Text>}
       />

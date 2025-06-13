@@ -293,9 +293,12 @@ function AddProductTab({ onProductAdded }) {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('');
+  const [category_id, setCategoryId] = useState('');
   const [categories, setCategories] = useState([]);
   const [imageBase64, setImageBase64] = useState('');
+  const [variants, setVariants] = useState([
+    { quantity_value: '', price: '', mrp: '' }
+  ]);
 
   React.useEffect(() => {
     axios
@@ -321,48 +324,50 @@ function AddProductTab({ onProductAdded }) {
     }
   };
 
+  const addVariant = () => {
+    setVariants([...variants, { quantity_value: '', price: '', mrp: '' }]);
+  };
+
+  const updateVariant = (idx, key, value) => {
+    setVariants(variants.map((v, i) => i === idx ? { ...v, [key]: value } : v));
+  };
+
+  const removeVariant = (idx) => {
+    setVariants(variants.filter((_, i) => i !== idx));
+  };
+
   const handleAddProduct = async () => {
-    if (!name.trim() || !price.trim() || !category.trim()) {
-      Alert.alert('Error', 'Name, price and category are required');
-      return;
-    }
-    if (!imageBase64) {
-      Alert.alert('Error', 'Please take a product photo');
+    if (!name.trim() || !category_id || !variants.length || !imageBase64) {
+      Alert.alert('Error', 'Fill all fields and add at least one variant');
       return;
     }
     try {
       const prodRes = await axios.post(`${API_BASE_URL}/products`, {
         name,
-        price,
         description,
-        category,
+        category_id:Number(category_id),
+        variants,
       });
       const product_id = prodRes.data.id;
-
       await axios.post(`${API_BASE_URL}/images`, {
         product_id,
         image_base64: imageBase64,
         mime_type: 'image/jpeg',
       });
-
       Alert.alert('Success', 'Product and image added!');
       setName('');
-      setPrice('');
       setDescription('');
+      setCategoryId('');
       setImageBase64('');
-      setCategory('');
+      setVariants([{ quantity_value: '', price: '', mrp: '' }]);
       if (onProductAdded) onProductAdded();
     } catch (err) {
-      if (err.response?.status === 409) {
-        Alert.alert('Duplicate Product', 'A product with this name already exists.');
-      } else {
-        Alert.alert('Error', err?.response?.data?.error || err.message || 'Failed to add product or image');
-      }
+      Alert.alert('Error', err?.response?.data?.error || err.message || 'Failed to add product or image');
     }
   };
 
   return (
-    <ScrollView contentContainerStyle={{ paddingTop: 16, paddingBottom: 30, paddingLeft: 16, paddingRight: 16 }}>
+    <ScrollView contentContainerStyle={{ padding: 16 }}>
       <Text style={styles.labelName}>Product Name</Text>
       <TextInput
         style={styles.input}
@@ -371,7 +376,7 @@ function AddProductTab({ onProductAdded }) {
         value={name}
         onChangeText={setName}
       />
-      <Text style={styles.labelPrice}>Price</Text>
+      {/* <Text style={styles.labelPrice}>Price</Text>
       <TextInput
         style={styles.input}
         placeholder="Price"
@@ -379,7 +384,7 @@ function AddProductTab({ onProductAdded }) {
         value={price}
         onChangeText={setPrice}
         keyboardType="numeric"
-      />
+      /> */}
       <Text style={styles.labelDescription}>Description</Text>
       <TextInput
         style={styles.input}
@@ -392,17 +397,48 @@ function AddProductTab({ onProductAdded }) {
       <Text style={styles.labelCategory}>Category</Text>
       <View style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, marginBottom: 12, backgroundColor: '#fff' }}>
         <Picker
-          selectedValue={category}
-          onValueChange={(itemValue) => setCategory(itemValue)}
+          selectedValue={category_id}
+          onValueChange={(itemValue) => setCategoryId(itemValue)}
           style={{ color: 'black' }}
         >
           <Picker.Item label="Select Category" value="" />
-          {categories.map((cat, idx) => {
-            const label = typeof cat === 'string' ? cat : cat.name;
-            return <Picker.Item key={label || idx} label={label} value={label} />;
-          })}
+          {categories.map((cat, idx) => (
+            <Picker.Item key={cat.id} label={cat.name} value={cat.id} />
+          ))}
         </Picker>
       </View>
+      <Text style={styles.labelName}>Variants</Text>
+      {variants.map((v, idx) => (
+        <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+          <TextInput
+            style={[styles.input, { flex: 1 }]}
+            placeholder="Qty(gms/ml)"
+            value={v.quantity_value}
+            onChangeText={text => updateVariant(idx, 'quantity_value', text)}
+            
+          />
+          <TextInput
+            style={[styles.input, { flex: 1, marginLeft: 5 }]}
+            placeholder="Price"
+            value={v.price}
+            onChangeText={text => updateVariant(idx, 'price', text)}
+            keyboardType="numeric"
+          />
+          <TextInput
+            style={[styles.input, { flex: 1, marginLeft: 5 }]}
+            placeholder="MRP (optional)"
+            value={v.mrp}
+            onChangeText={text => updateVariant(idx, 'mrp', text)}
+            keyboardType="numeric"
+          />
+          <TouchableOpacity onPress={() => removeVariant(idx)} style={{ marginLeft: 5 }}>
+            <Ionicons name="close-circle" size={24} color="red" />
+          </TouchableOpacity>
+        </View>
+      ))}
+      <TouchableOpacity onPress={addVariant} style={[styles.button, { marginBottom: 12 }]}>
+        <Text style={styles.buttonText}>Add Variant</Text>
+      </TouchableOpacity>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
         <TouchableOpacity style={[styles.button, { backgroundColor: '#888', flex: 1, marginRight: 6 }]} onPress={pickImage} >
           <Text style={styles.buttonText}>Take Photo</Text>
@@ -434,6 +470,7 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
   const [editProduct, setEditProduct] = useState(null);
   const [editName, setEditName] = useState('');
   const [editPrice, setEditPrice] = useState('');
+  const [editVariants, setEditVariants] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -519,20 +556,32 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
   const openEditModal = (product) => {
     setEditProduct(product);
     setEditName(product.name);
-    setEditPrice(product.price.toString());
+    setEditVariants(product.variants || []);
     setEditModalVisible(true);
   };
 
+  const updateEditVariant = (idx, key, value) => {
+    setEditVariants(editVariants.map((v, i) => i === idx ? { ...v, [key]: value } : v));
+  };
+
+  const addEditVariant = () => {
+    setEditVariants([...editVariants, { quantity_value: '', price: '', mrp: '' }]);
+  };
+
+  const removeEditVariant = (idx) => {
+    setEditVariants(editVariants.filter((_, i) => i !== idx));
+  };
+
   const saveEdit = async () => {
-    if (!editName.trim() || !editPrice.trim() || isNaN(editPrice)) {
-      Alert.alert('Error', 'Enter valid name and price');
+    if (!editName.trim() || !editVariants.length) {
+      Alert.alert('Error', 'Enter valid name and at least one variant');
       return;
     }
     setLoadingId('edit' + editProduct.id);
     try {
       await axios.put(`${API_BASE_URL}/products/${editProduct.id}`, {
         name: editName,
-        price: editPrice,
+        variants: editVariants,
       });
       setEditModalVisible(false);
       setEditProduct(null);
@@ -615,10 +664,8 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
               </View>
               <View style={styles.infoColumn}>
                 <Text style={styles.name}>{item.name}</Text>
-                <Text style={styles.price}>₹{item.price}</Text>
-                {item.description ? (
-                  <Text style={styles.description}>{item.description}</Text>
-                ) : null}
+                {/* <Text style={styles.price}>₹{item.price}</Text> */}
+                
                 {/* Enable/Disable Toggle Button */}
                 <View style={{ flexDirection: 'row', marginTop: 8 }}>
                   <TouchableOpacity
@@ -694,7 +741,7 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
               placeholder="Product Name"
               placeholderTextColor="#888"
             />
-            <Text style={styles.labelPrice}>Price</Text>
+            {/* <Text style={styles.labelPrice}>Price</Text>
             <TextInput
               style={styles.input}
               value={editPrice}
@@ -702,7 +749,39 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
               placeholder="Price"
               placeholderTextColor="#888"
               keyboardType="numeric"
-            />
+            /> */}
+            <Text style={styles.labelName}>Variants</Text>
+            {editVariants.map((v, idx) => (
+              <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                <TextInput
+                  style={[styles.input, { flex: 1 }]}
+                  placeholder="Qty"
+                  value={v.quantity_value}
+                  onChangeText={text => updateEditVariant(idx, 'quantity_value', text)}
+                  
+                />
+                <TextInput
+                  style={[styles.input, { flex: 1, marginLeft: 5 }]}
+                  placeholder="Price"
+                  value={v.price}
+                  onChangeText={text => updateEditVariant(idx, 'price', text)}
+                  keyboardType="numeric"
+                />
+                <TextInput
+                  style={[styles.input, { flex: 1, marginLeft: 5 }]}
+                  placeholder="MRP (optional)"
+                  value={v.mrp}
+                  onChangeText={text => updateEditVariant(idx, 'mrp', text)}
+                  keyboardType="numeric"
+                />
+                <TouchableOpacity onPress={() => removeEditVariant(idx)} style={{ marginLeft: 5 }}>
+                  <Ionicons name="close-circle" size={24} color="red" />
+                </TouchableOpacity>
+              </View>
+            ))}
+            <TouchableOpacity onPress={addEditVariant} style={[styles.button, { marginBottom: 12 }]}>
+              <Text style={styles.buttonText}>Add Variant</Text>
+            </TouchableOpacity>
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 18 }}>
               <TouchableOpacity
                 style={[styles.button, { backgroundColor: '#007aff', marginRight: 8, paddingVertical: 10, paddingHorizontal: 18 }]}
@@ -929,7 +1008,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     marginBottom: 12,
-    fontSize: 16,
+    fontSize: 15,
   },
   button: {
     backgroundColor: '#007aff',

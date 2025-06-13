@@ -1,5 +1,6 @@
 import React, { useState ,useContext } from 'react';
-
+import { LinearGradient } from 'expo-linear-gradient';
+import MaskedView from '@react-native-masked-view/masked-view';
 import {
   View,
   Text,
@@ -8,7 +9,9 @@ import {
   Alert,
   StyleSheet,
   Animated,
+  
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import axios from 'axios';
 import { UserContext } from '../UserContext';
 
@@ -79,8 +82,15 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
+    
     <View style={styles.container}>
-      <Text style={styles.header}>Kirana Store App </Text>
+       <ExpoImage
+        source={require('../icon_gif.gif')}
+        style={styles.logo}
+        contentFit="contain"
+        transition={100}
+      />
+    
 
       <TextInput
         style={[
@@ -164,13 +174,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
-  header: {
-    fontSize: 34,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-    textAlign: 'center',
-    marginBottom: 30,
+  logo: {
+    width: 200,
+    height: 200,
+    resizeMode: 'contain',
+    alignContent: 'center',
+    alignSelf: 'center',
+    marginBottom: 20,
+    borderRadius: 40,
+    marginTop: -200,
+    resizeMode: 'contain',
+
   },
+
+  
   input: {
     backgroundColor: '#fff',
     borderWidth: 1.5,

@@ -2,7 +2,8 @@
   "expo": {
     "icon": "./icon.png",
     "android": {
-      "package": "com.mariyala_siva.kiranastoreapp"
+      "package": "com.mariyala_siva.kiranastoreapp",
+      "jsEngine": "hermes"
     },
     "extra": {
       "eas": {

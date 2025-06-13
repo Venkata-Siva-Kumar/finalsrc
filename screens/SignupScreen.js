@@ -277,7 +277,7 @@ export default function SignupScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     padding: 15,
-    margin: 15,
+    flex: 1,
     backgroundColor: '#fff',
     elevation: 2,
     shadowColor: '#000',
