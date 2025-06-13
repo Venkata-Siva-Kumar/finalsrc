@@ -16,7 +16,7 @@ export default function CartScreen({ navigation, route }) {
   const { user } = useContext(UserContext);
   const loggedInUserId = user?.id;
   const loggedInMobile = user?.mobile;
-  
+  const [addressTouched, setAddressTouched] = useState({});
   const [addresses, setAddresses] = useState([]);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [addressForm, setAddressForm] = useState({
@@ -63,16 +63,13 @@ export default function CartScreen({ navigation, route }) {
     }, [route.params?.orderedProductIds, cart])
   );
 
- 
-  useEffect(() => {
-  if (showSelectAddressModal) {
-    fetch(`${API_BASE_URL}/addresses?user_id=${loggedInMobile}`)
-      .then(res => res.json())
-      .then(data => setAddresses(Array.isArray(data) ? data : []))
-      .catch(() => setAddresses([]));
-  }
-}, [showSelectAddressModal, loggedInMobile]);
-
+ const fetchAddresses = () => {
+  if (!loggedInMobile) return;
+  fetch(`${API_BASE_URL}/addresses?user_id=${loggedInMobile}`)
+    .then(res => res.json())
+    .then(data => setAddresses(Array.isArray(data) ? data : []))
+    .catch(() => setAddresses([]));
+};
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalAmount = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -183,14 +180,23 @@ export default function CartScreen({ navigation, route }) {
 
   const addAddress = async () => {
     const { name, addr_mobile, pincode, locality, address, city, state, landmark } = addressForm;
-    if (!name.trim() || !addr_mobile.trim() || !pincode.trim() || !address.trim() || !locality.trim()) {
-      Alert.alert('Missing Fields', 'Please fill in all required fields (Name, Mobile, Pincode, Address).');
-      return;
+  const requiredFields = { name, addr_mobile, pincode, address, locality };
+  let newTouched = {};
+  let hasError = false;
+
+  Object.entries(requiredFields).forEach(([key, value]) => {
+    if (!value.trim()) {
+      newTouched[key] = true;
+      hasError = true;
     }
-    if (!/^\d{10}$/.test(addr_mobile)) {
-      Alert.alert('Invalid Mobile', 'Please enter a valid 10-digit mobile number.');
-      return;
-    }
+  });
+
+  setAddressTouched(newTouched);
+
+  if (hasError) {
+    Alert.alert('Missing Fields', 'Please fill in all required fields (Name, Mobile, Pincode, Address, Locality).');
+    return;
+  }
 
     try {
       let response, savedAddress;
@@ -243,7 +249,7 @@ export default function CartScreen({ navigation, route }) {
       Alert.alert('Error', error.message || 'Failed to save address to database.');
       return;
     }
-
+    
     setAddressForm({
       name: '', addr_mobile: '', pincode: '', locality: '',
       address: '', city: '', state: '', landmark: '',
@@ -572,7 +578,7 @@ export default function CartScreen({ navigation, route }) {
 
             <Text>Name <Text style={{ color: 'red' }}> *</Text> </Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, addressTouched.name && !addressForm.name ? styles.inputError : null]}
               value={addressForm.name}
               onChangeText={(text) => setAddressForm({ ...addressForm, name: text })}
               placeholder="Name"
@@ -581,7 +587,7 @@ export default function CartScreen({ navigation, route }) {
 
             <Text>Mobile Number <Text style={{ color: 'red' }}> *</Text></Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, addressTouched.addr_mobile && !addressForm.addr_mobile ? styles.inputError : null]}
               value={addressForm.addr_mobile}
               onChangeText={(text) => setAddressForm({ ...addressForm, addr_mobile: text })}
               placeholder="Mobile Number"
@@ -592,7 +598,7 @@ export default function CartScreen({ navigation, route }) {
 
             <Text>Pincode <Text style={{ color: 'red' }}> *</Text></Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, addressTouched.pincode && !addressForm.pincode ? styles.inputError : null]}
               value={addressForm.pincode}
               onChangeText={(text) => setAddressForm({ ...addressForm, pincode: text })}
               placeholder="Pincode"
@@ -603,7 +609,7 @@ export default function CartScreen({ navigation, route }) {
 
             <Text>Address(Flat,House No,Building,Company,Apartment)<Text style={{ color: 'red' }}> *</Text></Text>
             <TextInput
-              style={[styles.input, { height: 80 }]}
+              style={[styles.input, { height: 80 }, addressTouched.address && !addressForm.address ? styles.inputError : null]}
               value={addressForm.address}
               onChangeText={(text) => setAddressForm({ ...addressForm, address: text })}
               placeholder="FullAddress(Flat,House No,Building,Company,Apartment)"
@@ -613,7 +619,7 @@ export default function CartScreen({ navigation, route }) {
 
             <Text>Locality/Area/Street <Text style={{ color: 'red' }}> *</Text> </Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, addressTouched.locality && !addressForm.locality ? styles.inputError : null]}
               value={addressForm.locality}
               onChangeText={(text) => setAddressForm({ ...addressForm, locality: text })}
               placeholder="Locality"
@@ -680,7 +686,7 @@ export default function CartScreen({ navigation, route }) {
 
       <TouchableOpacity
         style={[styles.orderButton, { marginBottom: 10 }]}
-        onPress={() => setShowSelectAddressModal(true)}
+        onPress={() => {fetchAddresses(),setShowSelectAddressModal(true)}}
       >
         <Text style={styles.orderButtonText} >Select Delivery Address</Text>
       </TouchableOpacity>
@@ -789,5 +795,9 @@ const styles = StyleSheet.create({
   quantityText: {
     marginHorizontal: 10,
     fontSize: 16,
-  }
+  },
+  inputError: {
+  borderColor: 'red',
+  backgroundColor: '#fff0f0',
+},
 });

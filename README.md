@@ -52,4 +52,4 @@ In render we have use the follwoing params
 # expo account commands 
 eas logout
 eas login
-
+eas init(remove extra.eas.projectId and owner  from app.json and try eas init)

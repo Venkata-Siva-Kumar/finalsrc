@@ -383,5 +383,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     backgroundColor: 'transparent',
     borderWidth: 0,
+    color: '#4b5563',
   },
 });

@@ -405,6 +405,7 @@ function AddProductTab({ onProductAdded }) {
           <TextInput
             style={[styles.input, { flex: 1 }]}
             placeholder="Qty(gms/ml)"
+            placeholderTextColor="#888"
             value={v.quantity_value}
             onChangeText={text => updateVariant(idx, 'quantity_value', text)}
             
@@ -412,6 +413,7 @@ function AddProductTab({ onProductAdded }) {
           <TextInput
             style={[styles.input, { flex: 1, marginLeft: 5 }]}
             placeholder="Price"
+            placeholderTextColor="#888"
             value={v.price}
             onChangeText={text => updateVariant(idx, 'price', text)}
             keyboardType="numeric"
@@ -419,6 +421,7 @@ function AddProductTab({ onProductAdded }) {
           <TextInput
             style={[styles.input, { flex: 1, marginLeft: 5 }]}
             placeholder="MRP (optional)"
+            placeholderTextColor="#888"
             value={v.mrp}
             onChangeText={text => updateVariant(idx, 'mrp', text)}
             keyboardType="numeric"

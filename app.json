@@ -4,15 +4,9 @@
     "slug": "kirana-store-app",
     "icon": "./icon.png",
     "android": {
-      "package": "com.mariyala_siva.kiranastoreapp",
+      "package": "com.venkata_siva.kiranastoreapp",
       "jsEngine": "hermes",
-      "versionCode": 2,
       "appName": "SG Store"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "07baab10-c445-4278-8598-f9fa227de334"
-      }
     },
     "ios": {
       "bundleIdentifier": "com.yourname.kiranastoreapp",
@@ -20,6 +14,11 @@
         "ITSAppUsesNonExemptEncryption": false
       }
     },
-    "owner": "mariyala_siva"
+    "extra": {
+      "eas": {
+        "projectId": "e8992456-0be6-4e94-a8c0-515c9d6359f6"
+      }
+    },
+    "owner": "venkata_siva"
   }
 }
