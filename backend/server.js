@@ -12,10 +12,11 @@ app.use(express.urlencoded({ limit: '1mb', extended: true }));
 
 // ✅ Connect to MySQL
 const db = mysql.createConnection({
-  host: '192.168.1.30',
-  user: 'root',
-  password: 'Venkata@290805',
-  database: 'kirana_app',
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT,
   multipleStatements: true
 });
 
