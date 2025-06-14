@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, Platform, S
 import { CartContext } from './CartContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { API_BASE_URL } from '../config';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 function isValidDob(dob) {
   // Expects dd-mm-yyyy
@@ -63,7 +64,8 @@ export default function ProfileScreen({ route, navigation }) {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteConfirmPassword, setDeleteConfirmPassword] = useState('');
   const [deleting, setDeleting] = useState(false);
-
+  const [deletePasswordVisible, setDeletePasswordVisible] = useState(false);
+  const [deleteConfirmPasswordVisible, setDeleteConfirmPasswordVisible] = useState(false);
   useEffect(() => {
     if (userMobile) {
       fetch(`${API_BASE_URL}/user?mobile=${userMobile}`)
@@ -286,22 +288,46 @@ export default function ProfileScreen({ route, navigation }) {
         keyboardType="phone-pad"
         maxLength={10}
       />
-      <TextInput
-        placeholder="Password"
-        placeholderTextColor="#888"
-        style={styles.input}
-        value={deletePassword}
-        onChangeText={setDeletePassword}
-        secureTextEntry
-      />
-      <TextInput
-        placeholder="Confirm Password"
-        placeholderTextColor="#888"
-        style={styles.input}
-        value={deleteConfirmPassword}
-        onChangeText={setDeleteConfirmPassword}
-        secureTextEntry
-      />
+      <View style={{ position: 'relative' }}>
+        <TextInput
+          placeholder="Password"
+          placeholderTextColor="#888"
+          style={styles.input}
+          value={deletePassword}
+          onChangeText={setDeletePassword}
+          secureTextEntry={!deletePasswordVisible}
+        />
+        <TouchableOpacity
+          style={{ position: 'absolute', right: 12, top: 14 }}
+          onPress={() => setDeletePasswordVisible(v => !v)}
+        >
+          <Ionicons
+            name={deletePasswordVisible ? 'eye' : 'eye-off'}
+            size={20}
+            color="#888"
+          />
+        </TouchableOpacity>
+      </View>
+      <View style={{ position: 'relative' }}>
+        <TextInput
+          placeholder="Confirm Password"
+          placeholderTextColor="#888"
+          style={styles.input}
+          value={deleteConfirmPassword}
+          onChangeText={setDeleteConfirmPassword}
+          secureTextEntry={!deleteConfirmPasswordVisible}
+        />
+        <TouchableOpacity
+          style={{ position: 'absolute', right: 12, top: 14 }}
+          onPress={() => setDeleteConfirmPasswordVisible(v => !v)}
+        >
+          <Ionicons
+            name={deleteConfirmPasswordVisible ? 'eye' : 'eye-off'}
+            size={20}
+            color="#888"
+          />
+        </TouchableOpacity>
+      </View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
         <TouchableOpacity
           style={[styles.button, { backgroundColor: '#ccc', flex: 1, marginRight: 8 }]}

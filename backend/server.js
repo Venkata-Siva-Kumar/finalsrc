@@ -394,24 +394,24 @@ app.put('/addresses/:id', (req, res) => {
   );
 });
 
-// ✅ Delete user by mobile number
-app.delete('/users/:mobile', (req, res) => {
-  const { mobile } = req.params;
-  if (!mobile) {
-    return res.status(400).json({ message: 'Missing mobile number' });
-  }
-  // First, check if user exists
-  db.query('SELECT * FROM users WHERE mobile = ?', [mobile], (err, results) => {
-    if (err) return res.status(500).json({ message: 'Database error' });
-    if (results.length === 0) return res.status(404).json({ message: 'User not found' });
+// // ✅ Delete user by mobile number
+// app.delete('/users/:mobile', (req, res) => {
+//   const { mobile } = req.params;
+//   if (!mobile) {
+//     return res.status(400).json({ message: 'Missing mobile number' });
+//   }
+//   // First, check if user exists
+//   db.query('SELECT * FROM users WHERE mobile = ?', [mobile], (err, results) => {
+//     if (err) return res.status(500).json({ message: 'Database error' });
+//     if (results.length === 0) return res.status(404).json({ message: 'User not found' });
 
-    // Delete user
-    db.query('DELETE FROM users WHERE mobile = ?', [mobile], (err2, result) => {
-      if (err2) return res.status(500).json({ message: 'Error deleting user' });
-      res.json({ message: 'User deleted successfully' });
-    });
-  });
-});
+//     // Delete user
+//     db.query('DELETE FROM users WHERE mobile = ?', [mobile], (err2, result) => {
+//       if (err2) return res.status(500).json({ message: 'Error deleting user' });
+//       res.json({ message: 'User deleted successfully' });
+//     });
+//   });
+// });
 
 
 // ...existing code...
@@ -851,20 +851,46 @@ app.post('/delete-user', (req, res) => {
     if (err) return res.status(500).json({ success: false, message: 'Database error' });
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
 
+    const userId = results[0].id;
     const hashedPassword = results[0].password;
-    bcrypt.compare(password, hashedPassword, (err, isMatch) => {
+    require('bcrypt').compare(password, hashedPassword, (err, isMatch) => {
       if (err) return res.status(500).json({ success: false, message: 'Password comparison error' });
       if (!isMatch) return res.status(401).json({ success: false, message: 'Invalid password' });
 
-      // Delete user
-      db.query('DELETE FROM users WHERE mobile = ?', [mobile], (err2) => {
-        if (err2) return res.status(500).json({ success: false, message: 'Error deleting user' });
-        res.json({ success: true });
+      // Delete related records first
+      db.query('DELETE FROM cart WHERE user_id = ?', [userId], (err1) => {
+        if (err1) return res.status(500).json({ success: false, message: 'Error deleting cart' });
+        db.query('DELETE FROM addresses WHERE user_id = ?', [userId], (err2) => {
+          if (err2) return res.status(500).json({ success: false, message: 'Error deleting addresses' });
+
+          // --- Delete order_items and orders ---
+          db.query('SELECT orderId FROM orders WHERE user_id = ?', [userId], (errOrders, orderRows) => {
+            if (errOrders) return res.status(500).json({ success: false, message: 'Error fetching orders' });
+            const orderIds = orderRows.map(row => row.orderId);
+            if (orderIds.length > 0) {
+              db.query('DELETE FROM order_items WHERE orderId IN (?)', [orderIds], (errItems) => {
+                if (errItems) return res.status(500).json({ success: false, message: 'Error deleting order items' });
+                db.query('DELETE FROM orders WHERE user_id = ?', [userId], (err3) => {
+                  if (err3) return res.status(500).json({ success: false, message: 'Error deleting orders' });
+                  db.query('DELETE FROM users WHERE id = ?', [userId], (err4) => {
+                    if (err4) return res.status(500).json({ success: false, message: 'Error deleting user' });
+                    res.json({ success: true });
+                  });
+                });
+              });
+            } else {
+              // No orders, just delete user
+              db.query('DELETE FROM users WHERE id = ?', [userId], (err4) => {
+                if (err4) return res.status(500).json({ success: false, message: 'Error deleting user' });
+                res.json({ success: true });
+              });
+            }
+          });
+        });
       });
     });
   });
 });
-
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running on http://0.0.0.0:${PORT}`));

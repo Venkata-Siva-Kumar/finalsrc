@@ -172,7 +172,6 @@ export default function HomeScreen({ navigation, route }) {
           {validVariants.length > 0 ? (
   <Text style={styles.price}>
     {validVariants[0].quantity_value} • ₹{Number(validVariants[0].price).toFixed(2)}
-    {validVariants.length > 1 ? ' +' : ''}
   </Text>
 ) : (
   <Text style={styles.price}>No variants</Text>

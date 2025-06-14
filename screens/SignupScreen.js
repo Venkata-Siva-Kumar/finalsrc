@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, Alert,KeyboardAvoidingView, St
 import axios from 'axios';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-
+import TERMS_TEXT from './TermsText';
 import { API_BASE_URL } from '../config'; 
 
 function formatDateToDDMMYYYY(date) {
@@ -29,7 +29,7 @@ export default function SignupScreen({ navigation }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
-
+  const [termsScrolledToEnd, setTermsScrolledToEnd] = useState(false);
 
   const onChange = (event, selectedDate) => {
     setShowPicker(false);
@@ -269,7 +269,6 @@ export default function SignupScreen({ navigation }) {
           />
         )}
 
-
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
           <TouchableOpacity
             onPress={() => setAcceptedTerms(!acceptedTerms)}
@@ -309,33 +308,82 @@ export default function SignupScreen({ navigation }) {
       
     </ScrollView>
         {showTermsModal && (
-      <View style={{
-        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', zIndex: 10
-      }}>
-        <View style={{
-          backgroundColor: '#fff', borderRadius: 12, padding: 24, width: '85%', elevation: 5
-        }}>
-          <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 12, color: '#0066cc', textAlign: 'center' }}>
-            Terms and Conditions
-          </Text>
-          <ScrollView style={{ maxHeight: 250 }}>
-            <Text style={{ fontSize: 14, color: '#333' }}>
-              {/* Replace this with your actual terms */}
-              By signing up, you agree to abide by the rules and policies of this app. 
-              Your data will be handled securely and not shared with third parties. 
-              Please use the app responsibly.
-            </Text>
-          </ScrollView>
-          <TouchableOpacity
-            style={[styles.button, { marginTop: 18 }]}
-            onPress={() => setShowTermsModal(false)}
-          >
-            <Text style={styles.buttonText}>Close</Text>
-          </TouchableOpacity>
-        </View>
+  <View style={{
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-start', // Start from top
+    alignItems: 'center',
+    zIndex: 10
+  }}>
+    <View style={{
+      backgroundColor: '#fff',
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      width: '100%',
+      height: '100%',
+      padding: 24,
+      paddingBottom: 32,
+      elevation: 5,
+      justifyContent: 'flex-start'
+    }}>
+      <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 12, color: '#0066cc', textAlign: 'center' }}>
+        Terms and Conditions
+      </Text>
+      <ScrollView
+        style={{ flex: 1, marginBottom: 20 }}
+        onScroll={({ nativeEvent }) => {
+          const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+          if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 20) {
+            setTermsScrolledToEnd(true);
+          }
+        }}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={true}
+      >
+        <Text style={{ fontSize: 14, color: '#333' }}>
+          {TERMS_TEXT}
+        </Text>
+      </ScrollView>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: '#eee',
+            paddingVertical: 12,
+            borderRadius: 8,
+            marginRight: 8,
+            alignItems: 'center'
+          }}
+          onPress={() => {
+            setShowTermsModal(false);
+            setTermsScrolledToEnd(false);
+          }}
+        >
+          <Text style={{ color: '#333', fontWeight: 'bold' }}>Cancel</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: termsScrolledToEnd ? '#28a745' : '#b5e0c7',
+            paddingVertical: 12,
+            borderRadius: 8,
+            marginLeft: 8,
+            alignItems: 'center'
+          }}
+          disabled={!termsScrolledToEnd}
+          onPress={() => {
+            setAcceptedTerms(true);
+            setShowTermsModal(false);
+            setTermsScrolledToEnd(false);
+          }}
+        >
+          <Text style={{ color: '#fff', fontWeight: 'bold' }}>Agree</Text>
+        </TouchableOpacity>
       </View>
-    )}
+    </View>
+  </View>
+)}
     </KeyboardAvoidingView>
     </ScrollView>
   );
