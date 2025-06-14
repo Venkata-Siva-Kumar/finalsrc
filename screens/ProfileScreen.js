@@ -58,6 +58,11 @@ export default function ProfileScreen({ route, navigation }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [originalProfile, setOriginalProfile] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteMobile, setDeleteMobile] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteConfirmPassword, setDeleteConfirmPassword] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (userMobile) {
@@ -250,7 +255,118 @@ export default function ProfileScreen({ route, navigation }) {
             {loading ? 'Saving...' : 'Update'}
           </Text>
       </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.button, { backgroundColor: '#d9534f', marginTop: 10 }]}
+        onPress={() => setShowDeleteModal(true)}
+      >
+        <Text style={[styles.buttonText, { color: '#fff' }]}>Delete Account</Text>
+      </TouchableOpacity>
     </ScrollView>
+    {showDeleteModal && (
+  <View style={{
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', zIndex: 10
+  }}>
+    <View style={{
+      backgroundColor: '#fff', borderRadius: 12, padding: 24, width: '85%', elevation: 5
+    }}>
+      <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 12, color: '#d9534f', textAlign: 'center' }}>
+        Delete Account
+      </Text>
+      <Text style={{ marginBottom: 12, textAlign: 'center' }}>
+        Enter your mobile and password to confirm account deletion.
+      </Text>
+      <TextInput
+        placeholder="Mobile Number"
+        placeholderTextColor="#888"
+        style={styles.input}
+        value={deleteMobile}
+        onChangeText={setDeleteMobile}
+        keyboardType="phone-pad"
+        maxLength={10}
+      />
+      <TextInput
+        placeholder="Password"
+        placeholderTextColor="#888"
+        style={styles.input}
+        value={deletePassword}
+        onChangeText={setDeletePassword}
+        secureTextEntry
+      />
+      <TextInput
+        placeholder="Confirm Password"
+        placeholderTextColor="#888"
+        style={styles.input}
+        value={deleteConfirmPassword}
+        onChangeText={setDeleteConfirmPassword}
+        secureTextEntry
+      />
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: '#ccc', flex: 1, marginRight: 8 }]}
+          onPress={() => {
+            setShowDeleteModal(false);
+            setDeleteMobile('');
+            setDeletePassword('');
+            setDeleteConfirmPassword('');
+          }}
+          disabled={deleting}
+        >
+          <Text style={[styles.buttonText, { color: '#333' }]}>Cancel</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: '#d9534f', flex: 1, marginLeft: 8 }]}
+          onPress={async () => {
+            if (!deleteMobile || !deletePassword || !deleteConfirmPassword) {
+              Alert.alert('Error', 'Please fill all fields.');
+              return;
+            }
+            if (deletePassword !== deleteConfirmPassword) {
+              Alert.alert('Error', 'Passwords do not match.');
+              return;
+            }
+            if (deleteMobile !== userMobile) {
+              Alert.alert(  'Mobile Number Mismatch',  'The entered mobile number does not match your logged-in mobile number.');
+              return;
+            }
+            setDeleting(true);
+            try {
+              const response = await fetch(`${API_BASE_URL}/delete-user`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  mobile: deleteMobile,
+                  password: deletePassword,
+                }),
+              });
+              const data = await response.json();
+              if (data.success) {
+                Alert.alert('Account Deleted', 'Your account has been deleted.', [
+                  { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) }
+                ]);
+              } else {
+                Alert.alert('Delete Failed', data.message || 'Could not delete account.');
+              }
+            } catch (e) {
+              Alert.alert('Error', 'Failed to delete account.');
+            }
+            setDeleting(false);
+            setShowDeleteModal(false);
+            setDeleteMobile('');
+            setDeletePassword('');
+            setDeleteConfirmPassword('');
+          }}
+          disabled={deleting}
+        >
+          <Text style={[styles.buttonText, { color: '#fff' }]}>
+            {deleting ? 'Deleting...' : 'Delete'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </View>
+)}
     </KeyboardAvoidingView>
   );
 }

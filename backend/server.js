@@ -10,7 +10,6 @@ app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ limit: '1mb', extended: true }));
 
-// ✅ Connect to MySQL
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -19,6 +18,9 @@ const db = mysql.createConnection({
   port: process.env.DB_PORT,
   multipleStatements: true
 });
+
+
+
 
 db.connect(err => {
   if (err) {
@@ -833,6 +835,30 @@ app.delete('/products/:id', (req, res) => {
       db.query('DELETE FROM products WHERE id = ?', [productId], (err3, result) => {
         if (err3) return res.status(500).json({ error: 'Failed to delete product' });
         if (result.affectedRows === 0) return res.status(404).json({ error: 'Product not found' });
+        res.json({ success: true });
+      });
+    });
+  });
+});
+
+
+app.post('/delete-user', (req, res) => {
+  const { mobile, password } = req.body;
+  if (!mobile || !password) {
+    return res.status(400).json({ success: false, message: 'Mobile and password required' });
+  }
+  db.query('SELECT * FROM users WHERE mobile = ?', [mobile], (err, results) => {
+    if (err) return res.status(500).json({ success: false, message: 'Database error' });
+    if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const hashedPassword = results[0].password;
+    bcrypt.compare(password, hashedPassword, (err, isMatch) => {
+      if (err) return res.status(500).json({ success: false, message: 'Password comparison error' });
+      if (!isMatch) return res.status(401).json({ success: false, message: 'Invalid password' });
+
+      // Delete user
+      db.query('DELETE FROM users WHERE mobile = ?', [mobile], (err2) => {
+        if (err2) return res.status(500).json({ success: false, message: 'Error deleting user' });
         res.json({ success: true });
       });
     });

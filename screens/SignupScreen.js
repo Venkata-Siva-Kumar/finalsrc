@@ -27,6 +27,9 @@ export default function SignupScreen({ navigation }) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+
 
   const onChange = (event, selectedDate) => {
     setShowPicker(false);
@@ -49,6 +52,7 @@ export default function SignupScreen({ navigation }) {
 
     setTouched(newTouched);
 
+
     if (hasError) {
       Alert.alert('Error', 'Please fill all required fields');
       return;
@@ -67,6 +71,11 @@ export default function SignupScreen({ navigation }) {
       Alert.alert('Error', 'Looks Password Mismatch');
       return;
     }
+
+    if (!acceptedTerms) {
+    Alert.alert('Terms Required', 'You must accept the Terms and Conditions to sign up.');
+    return;
+  }
 
     axios.post(`${API_BASE_URL}/signup`, { fname, lname, mobile, password, gender, email, dob })
       .then(res => {
@@ -260,6 +269,37 @@ export default function SignupScreen({ navigation }) {
           />
         )}
 
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+          <TouchableOpacity
+            onPress={() => setAcceptedTerms(!acceptedTerms)}
+            style={{
+              width: 22,
+              height: 22,
+              borderWidth: 1.5,
+              borderColor: '#0066cc',
+              borderRadius: 4,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 8,
+              backgroundColor: acceptedTerms ? '#0066cc' : '#fff',
+            }}
+          >
+            {acceptedTerms && (
+              <Ionicons name="checkmark" size={18} color="#fff" />
+            )}
+          </TouchableOpacity>
+          <Text style={{ fontSize: 14, color: '#222' }}>
+            I accept the{' '}
+            <Text
+              style={{ color: '#0066cc', textDecorationLine: 'underline' }}
+              onPress={() => setShowTermsModal(true)}
+            >
+              Terms and Conditions
+            </Text>
+          </Text>
+        </View>
+
         <TouchableOpacity style={styles.button} onPress={handleSignup}>
           <Text style={styles.buttonText}>Sign Up</Text>
         </TouchableOpacity>
@@ -268,6 +308,34 @@ export default function SignupScreen({ navigation }) {
         </TouchableOpacity>
       
     </ScrollView>
+        {showTermsModal && (
+      <View style={{
+        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', zIndex: 10
+      }}>
+        <View style={{
+          backgroundColor: '#fff', borderRadius: 12, padding: 24, width: '85%', elevation: 5
+        }}>
+          <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 12, color: '#0066cc', textAlign: 'center' }}>
+            Terms and Conditions
+          </Text>
+          <ScrollView style={{ maxHeight: 250 }}>
+            <Text style={{ fontSize: 14, color: '#333' }}>
+              {/* Replace this with your actual terms */}
+              By signing up, you agree to abide by the rules and policies of this app. 
+              Your data will be handled securely and not shared with third parties. 
+              Please use the app responsibly.
+            </Text>
+          </ScrollView>
+          <TouchableOpacity
+            style={[styles.button, { marginTop: 18 }]}
+            onPress={() => setShowTermsModal(false)}
+          >
+            <Text style={styles.buttonText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    )}
     </KeyboardAvoidingView>
     </ScrollView>
   );
@@ -319,7 +387,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 8,
     marginTop: 7,    // reduced
-    marginBottom: 9, // reduced
+    marginBottom: 25, // reduced
     elevation: 1,
   },
   buttonText: {

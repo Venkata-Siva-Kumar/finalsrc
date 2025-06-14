@@ -153,24 +153,13 @@ export default function HomeScreen({ navigation, route }) {
   const renderItem = ({ item }) => {
     
     const validVariants = Array.isArray(item.variants)
-      ? item.variants.filter(v => typeof v.price === 'number' && v.price > 0)
+      ? item.variants.filter(v => v && v.id)
       : [];
 
-    const lowestVariant = validVariants.length > 0
-      ? validVariants.reduce((min, v) => (v.price < min.price ? v : min), validVariants[0])
-      : null;
-
-    const firstVariant = Array.isArray(item.variants) && item.variants.length > 0
-      ? item.variants.find(
-          v =>
-            v &&
-            v.price !== undefined &&
-            !isNaN(Number(v.price)) &&
-            Number(v.price) > 0 &&
-            typeof v.quantity_value === 'string' &&
-            v.quantity_value.length > 0
-        )
-      : null;
+    const onlyOneVariant = validVariants.length === 1;
+    const variant = onlyOneVariant ? validVariants[0] : null;
+    const qty = variant ? (variantQuantities[variant.id] || 0) : 0;
+    const totalQty = validVariants.reduce((sum, v) => sum + (variantQuantities[v.id] || 0), 0);
 
     return (
       <View style={styles.card}>
@@ -180,33 +169,136 @@ export default function HomeScreen({ navigation, route }) {
         />
         <View style={styles.infoColumn}>
           <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-          {firstVariant ? (
-            <Text style={styles.price}>
-              {firstVariant.quantity_value} • ₹{Number(firstVariant.price).toFixed(2)}
-            </Text>
-          ) : (
-            <Text style={styles.price}>No variants</Text>
-          )}
+          {validVariants.length > 0 ? (
+  <Text style={styles.price}>
+    {validVariants[0].quantity_value} • ₹{Number(validVariants[0].price).toFixed(2)}
+    {validVariants.length > 1 ? ' +' : ''}
+  </Text>
+) : (
+  <Text style={styles.price}>No variants</Text>
+)}
         </View>
-        <TouchableOpacity
-  style={styles.addButton}
-  onPress={() => openVariantModal(item)}
->
-  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-    <Text style={styles.addButtonText}>
-      Add
-      {(() => {
-        // Sum all variant quantities for this product
-        const totalQty = Array.isArray(item.variants)
-          ? item.variants.reduce((sum, v) => sum + (variantQuantities[v.id] || 0), 0)
-          : 0;
-        return totalQty > 0 ? ` (${totalQty})` : '';
-      })()}
-    </Text>
-    <Ionicons name="chevron-down" size={16} color="#fff" style={{ marginLeft: 2, marginTop: 4 }} />
-  </View>
-</TouchableOpacity>
-
+        {onlyOneVariant ? (
+          // For single-variant products, never show popup
+          totalQty === 0 ? (
+            <TouchableOpacity
+              style={[styles.addButton, { paddingHorizontal: 30 }]}
+              onPress={() => {
+                handleAddVariantToCart(item, variant, 1);
+                setVariantQuantities(prev => ({ ...prev, [variant.id]: 1 }));
+              }}
+            >
+              <Text style={[styles.addButtonText]}>Add</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity
+                onPress={() => {
+                  if (qty > 1) {
+                    handleAddVariantToCart(item, variant, qty - 1);
+                    setVariantQuantities(prev => ({ ...prev, [variant.id]: qty - 1 }));
+                  } else if (qty === 1) {
+                    setCart(prevCart =>
+                      prevCart.filter(
+                        cartItem => !(cartItem.product_id === item.id && cartItem.variant_id === variant.id)
+                      )
+                    );
+                    setVariantQuantities(prev => ({ ...prev, [variant.id]: 0 }));
+                    if (loggedInUserId) {
+                      axios.delete(`${API_BASE_URL}/cart`, {
+                        data: {
+                          user_id: loggedInUserId,
+                          product_id: item.id,
+                          variant_id: variant.id,
+                        }
+                      }).catch(() => {});
+                    }
+                  }
+                }}
+                style={{
+                  backgroundColor: '#28a745',
+                  borderRadius: 16,
+                  width: 32,
+                  height: 32,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 8,
+                }}
+              >
+                <Ionicons name="remove" size={22} color="#fff" />
+              </TouchableOpacity>
+              <Text style={{ fontSize: 16, fontWeight: 'bold', minWidth: 10, textAlign: 'center' }}>
+                {qty}
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  if (qty < 5) {
+                    handleAddVariantToCart(item, variant, qty + 1);
+                    setVariantQuantities(prev => ({ ...prev, [variant.id]: qty + 1 }));
+                  }
+                }}
+                style={{
+                  backgroundColor: '#28a745',
+                  borderRadius: 16,
+                  width: 32,
+                  height: 32,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginLeft: 8,
+                }}
+              >
+                <Ionicons name="add" size={22} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          )
+        ) : (
+          // For multi-variant products, show popup as before
+          totalQty === 0 ? (
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => openVariantModal(item)}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={styles.addButtonText}>Add</Text>
+                <Ionicons name="chevron-down" size={16} color="#fff" style={{ marginLeft: 2, marginTop: 4 }} />
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity
+                onPress={() => openVariantModal(item)}
+                style={{
+                  backgroundColor: '#28a745',
+                  borderRadius: 16,
+                  width: 32,
+                  height: 32,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 8,
+                }}
+              >
+                <Ionicons name="remove" size={22} color="#fff" />
+              </TouchableOpacity>
+              <Text style={{ fontSize: 16, fontWeight: 'bold', minWidth: 10, textAlign: 'center' }}>
+                {totalQty}
+              </Text>
+              <TouchableOpacity
+                onPress={() => openVariantModal(item)}
+                style={{
+                  backgroundColor: '#28a745',
+                  borderRadius: 16,
+                  width: 32,
+                  height: 32,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginLeft: 8,
+                }}
+              >
+                <Ionicons name="add" size={22} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          )
+        )}
       </View>
     );
   };
@@ -529,6 +621,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+
   },
   // ...other styles...
 });
