@@ -456,41 +456,32 @@ export default function CartScreen({ navigation, route }) {
       {selectedAddressIndex !== null ? (
         <View style={{ marginBottom: 10, backgroundColor: '#e6f7ff', padding: 12, borderRadius: 6 }}>
           <Text style={{ fontWeight: 'bold' }}>Deliver To:</Text>
-          <Text style={{ fontSize: 14 }}>
-            Name: {addresses[selectedAddressIndex].name}
-          </Text>
-          <Text style={{ fontSize: 14 }}>
-            Mobile: {addresses[selectedAddressIndex].addr_mobile}
-          </Text>
-          <Text style={{ fontSize: 14 }}>
-            Pincode: {addresses[selectedAddressIndex].pincode}
-          </Text>
-          <Text style={{ fontSize: 14 }}>
-            Address: {
-              (() => {
-                const addr = addresses[selectedAddressIndex];
-                try {
-                  if (typeof addr.address === 'string') {
-                    return JSON.parse(addr.address).fullAddress;
-                  }
-                  return addr.address.fullAddress;
-                } catch {
-                  return '';
-                }
-              })()
-            }
-          </Text>
-          <Text style={{ fontSize: 14 }}>
-            Locality: {addresses[selectedAddressIndex].locality}
-          </Text>
-          <Text style={{ fontSize: 14 }}>
-            City: {addresses[selectedAddressIndex].city || 'N/A'}
-          </Text>
-          <Text style={{ fontSize: 14 }}>
-            State: {addresses[selectedAddressIndex].state || 'N/A'}
-          </Text>
-          <Text style={{ fontSize: 14 }}>
-            Landmark: {addresses[selectedAddressIndex].landmark || 'N/A'}
+          <Text style={{ fontSize: 14 }} numberOfLines={3} ellipsizeMode="tail">
+            {(() => {
+              const addr = addresses[selectedAddressIndex];
+              let fullAddress = '';
+              try {
+                fullAddress = (typeof addr.address === 'string'
+                  ? JSON.parse(addr.address).fullAddress
+                  : addr.address.fullAddress
+                );
+              } catch {
+                fullAddress = '';
+              }
+              // Combine all relevant fields into a single string
+              return [
+                addr.name,
+                addr.addr_mobile,
+                fullAddress,
+                addr.locality,
+                addr.city,
+                addr.state,
+                addr.pincode,
+                addr.landmark
+              ]
+              .filter(Boolean)
+              .join(', ');
+            })()}
           </Text>
         </View>
       ) : (

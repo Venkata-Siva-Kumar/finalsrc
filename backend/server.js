@@ -74,7 +74,7 @@ app.get('/products', (req, res) => {
     SELECT p.*, i.image_data, i.mime_type
     FROM products p
     LEFT JOIN images i ON p.id = i.product_id
-    WHERE p.status = 'enabled'
+    where 1
   `;
   const params = [];
   if (category_id) {

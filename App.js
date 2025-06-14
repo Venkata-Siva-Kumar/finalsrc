@@ -46,9 +46,9 @@ function MainTabs({route}) {
         tabBarInactiveTintColor: "gray",
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} initialParams={{ userMobile }}  options={{headerTitleAlign: 'center',headerLeft: () => <AppHeaderIcon />,}} />
-      <Tab.Screen name="Account" component={AccountScreen} initialParams={{ userMobile }}  options={{headerTitleAlign: 'center',headerLeft: () => <AppHeaderIcon />,}}/>
-      <Tab.Screen name="Cart"  component={CartScreen} options={{ tabBarBadge: cartCount > 0 ? cartCount : undefined ,headerTitleAlign: 'center',headerLeft: () => <AppHeaderIcon />}}  initialParams={{ userMobile }}  />
+      <Tab.Screen name="Home" component={HomeScreen} initialParams={{ userMobile }}  options={{headerTitleAlign: 'center',headerTitleStyle: { fontWeight: 'bold', fontSize: 25 },headerLeft: () => <AppHeaderIcon />,}} />
+      <Tab.Screen name="Account" component={AccountScreen} initialParams={{ userMobile }}  options={{headerTitleAlign: 'center',headerTitleStyle: { fontWeight: 'bold', fontSize: 25 },headerLeft: () => <AppHeaderIcon />,}}/>
+      <Tab.Screen name="Cart"  component={CartScreen} options={{ tabBarBadge: cartCount > 0 ? cartCount : undefined ,headerTitleAlign: 'center',headerTitleStyle: { fontWeight: 'bold', fontSize: 25 },headerLeft: () => <AppHeaderIcon />}}  initialParams={{ userMobile }}  />
     </Tab.Navigator>
   );
 }
@@ -80,7 +80,7 @@ function AdminTabs() {
       <Tab.Screen
         name="Earnings"
         component={EarningsTab}
-        options={{ title: "Earnings",headerTitleAlign: 'center',headerLeft: () => <AppHeaderIcon /> ,headerTitleStyle: { fontWeight: 'bold', fontSize: 25 },}}
+        options={{ title: "Collections",headerTitleAlign: 'center',headerLeft: () => <AppHeaderIcon /> ,headerTitleStyle: { fontWeight: 'bold', fontSize: 25 },}}
       />
       <Tab.Screen
         name="AdminOrders"

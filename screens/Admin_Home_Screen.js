@@ -300,12 +300,14 @@ function AddProductTab({ onProductAdded }) {
     { quantity_value: '', price: '', mrp: '' }
   ]);
 
-  React.useEffect(() => {
+  useFocusEffect(
+  React.useCallback(() => {
     axios
       .get(`${API_BASE_URL}/categories`)
       .then((res) => setCategories(res.data))
       .catch(() => setCategories([]));
-  }, []);
+  }, [])
+);
 
   // Use utility for picking product image
   const pickImageFromGallery = async () => {
@@ -856,7 +858,7 @@ function EarningsTab() {
   return (
   <View style={{ flex: 1, padding: 16 }}>
     <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 20 }}>
-      Total Earnings: <Text style={{ color: '#28a745' }}>₹{Number(totalEarnings).toFixed(2)}</Text>
+      Total Collection: <Text style={{ color: '#28a745' }}>₹{Number(totalEarnings).toFixed(2)}</Text>
     </Text>
     {/* Add From Date and To Date labels above the input fields */}
     <View style={{ flexDirection: 'row', marginBottom: 4 }}>

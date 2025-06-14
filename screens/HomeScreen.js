@@ -189,14 +189,23 @@ export default function HomeScreen({ navigation, route }) {
           )}
         </View>
         <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => openVariantModal(item)}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={styles.addButtonText}>Add</Text>
-            <Ionicons name="chevron-down" size={16} color="#fff" style={{ marginLeft: 2, marginTop: 4 }} />
-          </View>
-        </TouchableOpacity>
+  style={styles.addButton}
+  onPress={() => openVariantModal(item)}
+>
+  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+    <Text style={styles.addButtonText}>
+      Add
+      {(() => {
+        // Sum all variant quantities for this product
+        const totalQty = Array.isArray(item.variants)
+          ? item.variants.reduce((sum, v) => sum + (variantQuantities[v.id] || 0), 0)
+          : 0;
+        return totalQty > 0 ? ` (${totalQty})` : '';
+      })()}
+    </Text>
+    <Ionicons name="chevron-down" size={16} color="#fff" style={{ marginLeft: 2, marginTop: 4 }} />
+  </View>
+</TouchableOpacity>
 
       </View>
     );
@@ -509,7 +518,7 @@ const styles = StyleSheet.create({
   },
   addButton: {
     backgroundColor: '#28a745',
-    paddingHorizontal: 28,
+    paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 20,
     justifyContent: 'center',
