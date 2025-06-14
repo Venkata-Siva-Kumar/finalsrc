@@ -5,6 +5,9 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect } from '@react-navigation/native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { API_BASE_URL } from '../config';
+import AppHeaderIcon from './AppHeaderIcon'; 
+
+
 const Tab = createMaterialTopTabNavigator();
 
 function OrdersTab({ orders, productMap, status, updateOrderStatus }) {
@@ -204,8 +207,7 @@ export default function AdminOrdersScreen({ navigation }) {
   useLayoutEffect(() => {
     navigation.setOptions({
       title: 'Orders',
-      headerTitleStyle: { fontWeight: 'bold', fontSize: 30 },
-      headerTitleAlign: 'center',
+      
     });
   }, [navigation]);
 

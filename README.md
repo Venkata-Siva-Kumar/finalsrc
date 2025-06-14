@@ -33,7 +33,7 @@ Sets up your Expo project for EAS Build by creating or updating the `eas.json` c
 ```
 
 ```
-eas build -p android --profile preview
+
 ```
 Starts a cloud build for an Android app using the `preview` profile from your `eas.json`. After completion, you’ll get a link to download the `.apk` or `.aab` file.
 

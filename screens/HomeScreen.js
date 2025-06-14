@@ -215,105 +215,160 @@ export default function HomeScreen({ navigation, route }) {
         backgroundColor: 'rgba(0,0,0,0.4)',
         justifyContent: 'flex-end',
       }}>
-        <View style={{
-          backgroundColor: '#fff',
-          borderTopLeftRadius: 16,
-          borderTopRightRadius: 16,
-          padding: 16,
-          maxHeight: '60%',
-        }}>
-          <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 12 }}>
-            {modalProduct?.name}
-          </Text>
-          {modalProduct?.variants?.map((v, idx) => {
-            const qty = variantQuantities[v.id] || 0;
+        <TouchableOpacity
+          activeOpacity={1}
+          onPressOut={() => setModalVisible(false)}
+          style={{ flex: 1 }}
+        >
+          <View style={{
+            flex: 1,
+            justifyContent: 'flex-end',
+          }}>
+            <TouchableOpacity
+              activeOpacity={1}
+              style={{}}
+              onPress={() => {}} // Prevent modal close when clicking inside
+            >
+              <View style={{
+                backgroundColor: '#fff',
+                borderTopLeftRadius: 16,
+                borderTopRightRadius: 16,
+                padding: 16,
+                maxHeight: '100%', // Increased from 60% to 85%
+                position: 'relative',
+              }}>
+                {/* Cross Icon at the top center */}
+                <TouchableOpacity
+                  onPress={() => setModalVisible(false)}
+                  style={{
+                    position: 'absolute',
+                    top: -60,
+                    left: '50%',
+                    marginLeft: -8,
+                    zIndex: 10,
+                    backgroundColor: '#aaa',
+                    borderRadius: 28,
+                    width: 50,
+                    height: 50,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    elevation: 4,
+                  }}
+                >
+                  <Ionicons name="close" size={32} color="#f5f5f5" />
+                </TouchableOpacity>
 
-            return (
-              <View key={v.id} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                <Text style={{ flex: 2 }}>{v.quantity_value}</Text>
-                <Text style={{ flex: 2, textDecorationLine: v.mrp && v.mrp > v.price ? 'line-through' : 'none', color: '#888' }}>
-                  {v.mrp && v.mrp > v.price ? `₹${v.mrp}` : ''}
-                </Text>
-                <Text style={{ flex: 2, fontWeight: 'bold', color: '#222' }}>₹{v.price}</Text>
-                {qty > 0 ? (
-                  <View style={{ flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
-                    <TouchableOpacity
-                      onPress={() => {
-                        if (qty > 1) {
-                          const nextQty = qty - 1;
-                          setVariantQuantities(prev => ({ ...prev, [v.id]: nextQty }));
-                          handleAddVariantToCart(modalProduct, v, nextQty);
-                        } else if (qty === 1) {
-                          setVariantQuantities(prev => ({ ...prev, [v.id]: 0 }));
-                          setCart(prevCart =>
-                            prevCart.filter(
-                              item => !(item.product_id === modalProduct.id && item.variant_id === v.id)
-                            )
-                          );
-                          if (loggedInUserId) {
-                            axios.delete(`${API_BASE_URL}/cart`, {
-                              data: {
-                                user_id: loggedInUserId,
-                                product_id: modalProduct.id,
-                                variant_id: v.id,
-                              }
-                            }).catch(() => {});
-                          }
-                        }
-                      }}
+                {/* Product Image */}
+                {modalProduct?.image_url && (
+                  <View style={{ alignItems: 'center', marginBottom: 12 }}>
+                    <Image
+                      source={{ uri: modalProduct.image_url }}
                       style={{
-                        backgroundColor: '#28a745',
+                        width: 72,
+                        height: 72,
                         borderRadius: 12,
-                        width: 28,
-                        height: 28,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginHorizontal: 4,
+                        marginBottom: 8,
+                        backgroundColor: '#f2f2f2',
                       }}
-                    >
-                      <Text style={{ color: '#fff', fontSize: 18 }}>-</Text>
-                    </TouchableOpacity>
-                    <Text style={{ minWidth: 18, textAlign: 'center', fontSize: 16 }}>{qty}</Text>
-                    <TouchableOpacity
-                      onPress={() => {
-                        if (qty < 5) {
-                          const nextQty = qty + 1;
-                          setVariantQuantities(prev => ({ ...prev, [v.id]: nextQty }));
-                          handleAddVariantToCart(modalProduct, v, nextQty);
-                        }
-                      }}
-                      disabled={qty >= 5}
-                      style={{
-                        backgroundColor: qty >= 5 ? '#ccc' : '#28a745',
-                        borderRadius: 12,
-                        width: 28,
-                        height: 28,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginHorizontal: 4,
-                      }}
-                    >
-                      <Text style={{ color: '#fff', fontSize: 18 }}>+</Text>
-                    </TouchableOpacity>
+                    />
                   </View>
-                ) : (
-                  <TouchableOpacity
-                    style={[styles.addButton, { flex: 1 }]}
-                    onPress={() => {
-                      setVariantQuantities(prev => ({ ...prev, [v.id]: 1 }));
-                      handleAddVariantToCart(modalProduct, v, 1);
-                    }}
-                  >
-                    <Text style={styles.addButtonText}>Add</Text>
-                  </TouchableOpacity>
                 )}
+
+                <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 12, textAlign: 'center' }}>
+                  {modalProduct?.name}
+                </Text>
+
+                {/* Make variants scrollable if too many */}
+                <ScrollView style={{ maxHeight: 300 }} contentContainerStyle={{ paddingBottom: 12 }}>
+                  {modalProduct?.variants?.map((v, idx) => {
+                    const qty = variantQuantities[v.id] || 0;
+                    return (
+                      <View key={v.id} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                        <Text style={{ flex: 2 }}>{v.quantity_value}</Text>
+                        <Text style={{ flex: 2, textDecorationLine: v.mrp && v.mrp > v.price ? 'line-through' : 'none', color: '#888' }}>
+                          {v.mrp && v.mrp > v.price ? `₹${v.mrp}` : ''}
+                        </Text>
+                        <Text style={{ flex: 2, fontWeight: 'bold', color: '#222' }}>₹{v.price}</Text>
+                        {qty > 0 ? (
+                          <View style={{ flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
+                            <TouchableOpacity
+                              onPress={() => {
+                                if (qty > 1) {
+                                  const nextQty = qty - 1;
+                                  setVariantQuantities(prev => ({ ...prev, [v.id]: nextQty }));
+                                  handleAddVariantToCart(modalProduct, v, nextQty);
+                                } else if (qty === 1) {
+                                  setVariantQuantities(prev => ({ ...prev, [v.id]: 0 }));
+                                  setCart(prevCart =>
+                                    prevCart.filter(
+                                      item => !(item.product_id === modalProduct.id && item.variant_id === v.id)
+                                    )
+                                  );
+                                  if (loggedInUserId) {
+                                    axios.delete(`${API_BASE_URL}/cart`, {
+                                      data: {
+                                        user_id: loggedInUserId,
+                                        product_id: modalProduct.id,
+                                        variant_id: v.id,
+                                      }
+                                    }).catch(() => {});
+                                  }
+                                }
+                              }}
+                              style={{
+                                backgroundColor: '#28a745',
+                                borderRadius: 12,
+                                width: 28,
+                                height: 28,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                marginHorizontal: 4,
+                              }}
+                            >
+                              <Text style={{ color: '#fff', fontSize: 18 }}>-</Text>
+                            </TouchableOpacity>
+                            <Text style={{ minWidth: 18, textAlign: 'center', fontSize: 16 }}>{qty}</Text>
+                            <TouchableOpacity
+                              onPress={() => {
+                                if (qty < 5) {
+                                  const nextQty = qty + 1;
+                                  setVariantQuantities(prev => ({ ...prev, [v.id]: nextQty }));
+                                  handleAddVariantToCart(modalProduct, v, nextQty);
+                                }
+                              }}
+                              disabled={qty >= 5}
+                              style={{
+                                backgroundColor: qty >= 5 ? '#ccc' : '#28a745',
+                                borderRadius: 12,
+                                width: 28,
+                                height: 28,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                marginHorizontal: 4,
+                              }}
+                            >
+                              <Text style={{ color: '#fff', fontSize: 18 }}>+</Text>
+                            </TouchableOpacity>
+                          </View>
+                        ) : (
+                          <TouchableOpacity
+                            style={[styles.addButton, { flex: 1 }]}
+                            onPress={() => {
+                              setVariantQuantities(prev => ({ ...prev, [v.id]: 1 }));
+                              handleAddVariantToCart(modalProduct, v, 1);
+                            }}
+                          >
+                            <Text style={styles.addButtonText}>Add</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    );
+                  })}
+                </ScrollView>
               </View>
-            );
-          })}
-          <TouchableOpacity onPress={() => setModalVisible(false)} style={{ marginTop: 10, alignSelf: 'center' }}>
-            <Text style={{ color: '#007bff', fontSize: 16 }}>Close</Text>
-          </TouchableOpacity>
-        </View>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
       </View>
     </Modal>
   );

@@ -21,7 +21,7 @@ const Tab = createMaterialTopTabNavigator();
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { pickAndCompressImage, formatDate, toApiDate } from '../admin/image_compress';
 import { useFocusEffect } from '@react-navigation/native';
-
+import AppHeaderIcon from './AppHeaderIcon'; 
 
 function CategoryManager() {
   const [categories, setCategories] = useState([]);
@@ -943,9 +943,8 @@ function AdminHomeScreen({ navigation }) {
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: 'Admin',
-      headerTitleStyle: { fontWeight: 'bold', fontSize: 30 },
-      headerLeft: () => "",
+      //title: 'Admin',
+      
       headerRight: () => (
         <TouchableOpacity
           onPress={() => {

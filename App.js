@@ -29,7 +29,7 @@ function MainTabs({route}) {
   const { cart } = useContext(CartContext);
   const cartCount = cart.length;
   return (
-    <Tab.Navigator options={{ headerRight: () => <AppHeaderIcon /> }}
+    <Tab.Navigator options={{  }}
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
@@ -46,9 +46,9 @@ function MainTabs({route}) {
         tabBarInactiveTintColor: "gray",
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} initialParams={{ userMobile }} options={{ headerRight: () => <AppHeaderIcon />, }} />
-      <Tab.Screen name="Account" component={AccountScreen} initialParams={{ userMobile }} options={{ headerRight: () => <AppHeaderIcon />, }}/>
-      <Tab.Screen name="Cart"  component={CartScreen} options={{ tabBarBadge: cartCount > 0 ? cartCount : undefined , headerRight: () => <AppHeaderIcon />}}  initialParams={{ userMobile }}  />
+      <Tab.Screen name="Home" component={HomeScreen} initialParams={{ userMobile }}  options={{headerTitleAlign: 'center',headerLeft: () => <AppHeaderIcon />,}} />
+      <Tab.Screen name="Account" component={AccountScreen} initialParams={{ userMobile }}  options={{headerTitleAlign: 'center',headerLeft: () => <AppHeaderIcon />,}}/>
+      <Tab.Screen name="Cart"  component={CartScreen} options={{ tabBarBadge: cartCount > 0 ? cartCount : undefined ,headerTitleAlign: 'center',headerLeft: () => <AppHeaderIcon />}}  initialParams={{ userMobile }}  />
     </Tab.Navigator>
   );
 }
@@ -75,17 +75,17 @@ function AdminTabs() {
       <Tab.Screen
         name="AdminHome"
         component={AdminHomeScreen}
-        options={{ title: "Home" }}
+        options={{ title: "Admin", headerTitleAlign: 'center',headerTitleStyle: { fontWeight: 'bold', fontSize: 25 },headerLeft: () => <AppHeaderIcon />,}}
       />
       <Tab.Screen
         name="Earnings"
         component={EarningsTab}
-        options={{ title: "Earnings",headerRight: () => <AppHeaderIcon /> }}
+        options={{ title: "Earnings",headerTitleAlign: 'center',headerLeft: () => <AppHeaderIcon /> ,headerTitleStyle: { fontWeight: 'bold', fontSize: 25 },}}
       />
       <Tab.Screen
         name="AdminOrders"
         component={AdminOrdersScreen}
-        options={{ title: "Orders",headerRight: () => <AppHeaderIcon /> }}
+        options={{ title: "Orders" ,headerLeft: () => <AppHeaderIcon />,headerTitleStyle: { fontWeight: 'bold', fontSize: 25 }, headerTitleAlign: 'center',}}
       />
     </Tab.Navigator>
   );
@@ -97,19 +97,19 @@ export default function App() {
       <CartProvider>
         <NavigationContainer >
           <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}  >
-            <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: true ,headerRight: () => <AppHeaderIcon />}}  />
-            <Stack.Screen name="AdminLogin" component={AdminLoginScreen} options={{ headerShown: true ,headerRight: () => <AppHeaderIcon />}} />
-            <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: true ,headerRight: () => <AppHeaderIcon />}} />
-            <Stack.Screen name="Main" component={MainTabs}  options={{ headerRight: () => <AppHeaderIcon />, }} />
+            <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: true }}  />
+            <Stack.Screen name="AdminLogin" component={AdminLoginScreen} options={{ headerShown: true }} />
+            <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: true }} />
+            <Stack.Screen name="Main" component={MainTabs}  options={{  }} />
             <Stack.Screen name="AdminMainTabs" component={AdminTabs} options={{ headerShown: false }} />
-            <Stack.Screen name="Payment" component={PaymentScreen} options={{ headerShown: true ,headerRight: () => <AppHeaderIcon />}}/>
+            <Stack.Screen name="Payment" component={PaymentScreen} options={{ headerShown: true }}/>
             {/* <Stack.Screen name="OTPLogin" component={OTPLoginScreen} options={{ headerShown: true}} /> */}
-            <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: true,headerRight: () => <AppHeaderIcon />}}/>
-            <Stack.Screen name="Payment2" component={Payment} options={{ headerShown: true ,headerRight: () => <AppHeaderIcon />}} />
+            <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: true}}/>
+            <Stack.Screen name="Payment2" component={Payment} options={{ headerShown: true }} />
             <Stack.Screen name="AdminHome" component={AdminHomeScreen} options={{ headerShown: true }} />
             <Stack.Screen name="Orders" component={OrdersScreen} options={{ headerShown: true ,headerRight: () => <AppHeaderIcon />}} />
             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ headerShown: true ,headerRight: () => <AppHeaderIcon />}} />  
-            <Stack.Screen name="ContactCenter" component={ContactCenterScreen} options={{ headerShown: true, title: "Contact Center",headerRight: () => <AppHeaderIcon /> }} />
+            <Stack.Screen name="ContactCenter" component={ContactCenterScreen} options={{ headerShown: true, title: "Contact Center",}} />
           </Stack.Navigator>
         </NavigationContainer>
       </CartProvider>
