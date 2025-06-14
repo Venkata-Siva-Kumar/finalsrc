@@ -469,6 +469,8 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
   const [editPrice, setEditPrice] = useState('');
   const [editVariants, setEditVariants] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [editCategoryId, setEditCategoryId] = useState('');
+  const [editDescription, setEditDescription] = useState('');
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -554,6 +556,8 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
     setEditProduct(product);
     setEditName(product.name);
     setEditVariants(product.variants || []);
+    setEditCategoryId(product.category_id ? String(product.category_id) : '');
+    setEditDescription(product.description || '');
     setEditModalVisible(true);
   };
 
@@ -579,6 +583,8 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
       await axios.put(`${API_BASE_URL}/products/${editProduct.id}`, {
         name: editName,
         variants: editVariants,
+        description: editDescription, 
+        category_id: editCategoryId,
       });
       setEditModalVisible(false);
       setEditProduct(null);
