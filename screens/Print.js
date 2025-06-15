@@ -10,8 +10,9 @@ const getPrintHtml = (order, productMap) => {
 GSTIN: 37APAPC5371F1Z7
 
 ----------------------------------------------
-BADVEL, BACK BIDE OF RTC BUSTAND
-
+BACK BIDE OF RTC BUSTAND
+BADVEL, ANDHRA PRADESH 516227
+Phone: +91-94409 47676
 ----------------------------------------------
         <b>Order Invoice</b>
 
@@ -47,12 +48,13 @@ ${order.deliveryAddress && typeof order.deliveryAddress === 'object' && !Array.i
     ? `
   <b>Name</b>    : ${order.deliveryAddress.name || ''}
   <b>Mobile</b>  : ${order.deliveryAddress.mobile || ''}
+  <b>Flat No</b> : ${order.deliveryAddress.address || ''}
   <b>Locality</b>: ${order.deliveryAddress.locality || ''}
   <b>City</b>    : ${order.deliveryAddress.city || ''}
   <b>State</b>   : ${order.deliveryAddress.state || ''}
   <b>Pincode</b> : ${order.deliveryAddress.pincode || ''}
   <b>Landmark</b>: ${order.deliveryAddress.landmark || ''}
-  <b>Address</b> : ${order.deliveryAddress.address || ''}
+  
   `
     : 'No delivery address provided.'}
 ----------------------------------------
