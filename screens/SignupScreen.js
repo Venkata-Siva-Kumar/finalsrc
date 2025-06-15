@@ -14,6 +14,24 @@ function formatDateToDDMMYYYY(date) {
   return `${day}-${month}-${year}`;
 }
 
+function isAtLeast18YearsOld(dobString) {
+  // dobString should be in 'YYYY-MM-DD' or 'DD-MM-YYYY' format
+  const [year, month, day] = dobString.includes('-') && dobString.split('-').length === 3
+    ? dobString.split('-').length === 3 && dobString.split('-')[0].length === 4
+      ? dobString.split('-') // YYYY-MM-DD
+      : dobString.split('-').reverse() // DD-MM-YYYY to YYYY-MM-DD
+    : [null, null, null];
+  if (!year || !month || !day) return false;
+  const dob = new Date(`${year}-${month}-${day}`);
+  const today = new Date();
+  const age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+    return age - 1;
+  }
+  return age >= 18;
+}
+
 export default function SignupScreen({ navigation }) {
   const [fname, setFname] = useState('');
   const [lname, setLname] = useState('');
@@ -39,7 +57,7 @@ export default function SignupScreen({ navigation }) {
   };
 
   const handleSignup = () => {
-    const requiredFields = { fname, lname, mobile, password, confirmPassword, gender };
+    const requiredFields = { fname, lname, mobile, password, confirmPassword, gender, dob };
     let newTouched = {};
     let hasError = false;
 
@@ -73,9 +91,19 @@ export default function SignupScreen({ navigation }) {
     }
 
     if (!acceptedTerms) {
-    Alert.alert('Terms Required', 'You must accept the Terms and Conditions to sign up.');
+    Alert.alert('Terms Required', 'You must read & accept the Terms and Conditions to sign up.');
     return;
   }
+
+    if (!isAtLeast18YearsOld(dob)) {
+      Alert.alert('Age Restriction', 'You must be at least 18 years old to sign up.');
+      return;
+    }
+
+    if (!dob || dob.trim() === '') {
+      Alert.alert('Date of Birth Required', 'Please enter your date of birth.');
+      return;
+    }
 
     axios.post(`${API_BASE_URL}/signup`, { fname, lname, mobile, password, gender, email, dob })
       .then(res => {
@@ -231,8 +259,9 @@ export default function SignupScreen({ navigation }) {
           onChangeText={setEmail}
         />
 
-        {/* Date of Birth */}
-        <Text style={styles.label}>Date of Birth</Text>
+        <Text style={styles.label}>
+          Date of Birth <Text style={styles.required}>*</Text>
+        </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
           <TextInput
             placeholder="dd-mm-yyyy"
@@ -253,7 +282,11 @@ export default function SignupScreen({ navigation }) {
     }
     setDob(formatted);
   }}
-            style={[styles.input, styles.inputUnique, { flex: 1, marginBottom: 0 }]}
+            style={[
+              styles.input,
+              touched.dob && !dob ? styles.inputError : styles.inputUnique,
+              { flex: 1, marginBottom: 0 }
+            ]}
           />
           <TouchableOpacity onPress={() => setShowPicker(true)} style={{ marginLeft: 8 }}>
             <Text style={{ fontSize: 22, color: '#007bff' }}>📅</Text>

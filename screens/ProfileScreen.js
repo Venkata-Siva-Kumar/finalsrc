@@ -46,6 +46,23 @@ function parseLocalDate(dob) {
   return new Date();
 }
 
+function isAtLeast18YearsOld(dobString) {
+  const [year, month, day] = dobString.includes('-') && dobString.split('-').length === 3
+    ? dobString.split('-')[0].length === 4
+      ? dobString.split('-') // YYYY-MM-DD
+      : dobString.split('-').reverse() // DD-MM-YYYY to YYYY-MM-DD
+    : [null, null, null];
+  if (!year || !month || !day) return false;
+  const dob = new Date(`${year}-${month}-${day}`);
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+    age--;
+  }
+  return age >= 18;
+}
+
 export default function ProfileScreen({ route, navigation }) {
   const userMobile = route.params?.userMobile;
   const { orderPlaced } = useContext(CartContext);
@@ -115,6 +132,10 @@ export default function ProfileScreen({ route, navigation }) {
   }
   if (dob && !isValidDob(dob)) {
     Alert.alert('Invalid DOB', 'Check for valid dob.');
+    return;
+  }
+  if (!isAtLeast18YearsOld(dob)) {
+    Alert.alert('Age Restriction', 'You must be at least 18 years old.');
     return;
   }
   

@@ -2,17 +2,19 @@ import React, { useEffect, useState, useLayoutEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, TextInput, TouchableOpacity } from 'react-native';
 import axios from 'axios';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { API_BASE_URL } from '../config';
 import AppHeaderIcon from './AppHeaderIcon'; 
-
+import * as Clipboard from 'expo-clipboard';
+import OrderDetailsScreen from './OrderDetailsScreen';
 
 const Tab = createMaterialTopTabNavigator();
 
 function OrdersTab({ orders, productMap, status, updateOrderStatus }) {
   const [search, setSearch] = useState('');
   const [filteredOrders, setFilteredOrders] = useState([]);
+  const navigation = useNavigation();
 
   useEffect(() => {
     const filtered = orders.filter(order => order.orderStatus === status);
@@ -51,97 +53,35 @@ function OrdersTab({ orders, productMap, status, updateOrderStatus }) {
         data={filteredOrders}
         keyExtractor={(item, index) => (item.orderId ? item.orderId.toString() : index.toString())}
         renderItem={({ item }) => (
-          <View style={styles.card}>
-            <Text style={styles.orderId}>Order ID: {item.orderId}</Text>
+          <TouchableOpacity
+            style={styles.minCard}
+            onPress={() => navigation.navigate('OrderDetails', { order: item, productMap })}
+            activeOpacity={0.8}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+              <Text style={styles.orderId}>Order ID: {item.orderId}</Text>
+            </View>
             <Text>User: {item.userMobile}</Text>
             <Text>Total: ₹{item.totalAmount}</Text>
             <Text
               style={{
-                      color:
-                        item.orderStatus === 'Pending'
-                          ? '#ff9500'
-                          : item.orderStatus === 'Delivered'
-                          ? '#28a745'
-                          : item.orderStatus === 'Cancelled'
-                          ? '#ff3b30'
-                          : '#333',
-                      fontWeight: 'bold',
-                    }}
-              >
+                color:
+                  item.orderStatus === 'Pending'
+                    ? '#ff9500'
+                    : item.orderStatus === 'Delivered'
+                    ? '#28a745'
+                    : item.orderStatus === 'Cancelled'
+                    ? '#ff3b30'
+                    : '#333',
+                fontWeight: 'bold',
+              }}
+            >
               Status: {item.orderStatus}
             </Text>
             <Text>
               Date: {item.orderDate ? new Date(item.orderDate).toLocaleString() : 'N/A'}
             </Text>
-            <Text style={{ fontWeight: 'bold', marginTop: 6 }}>Products:</Text>
-            {item.items && item.items.length > 0 ? (
-              item.items.map((prod, idx) => (
-                <View key={idx} style={{ marginLeft: 10, marginBottom: 4 }}>
-                  <Text>
-                    • {prod.name || productMap[prod.productId || prod.id] || 'Unknown'} x {prod.quantity} @ ₹{prod.price}
-                  </Text>
-                </View>
-              ))
-            ) : (
-              <Text>No products in this order.</Text>
-            )}
-            <Text style={{ fontWeight: 'bold', marginTop: 6 }}>Address:</Text>
-                {item.deliveryAddress && typeof item.deliveryAddress === 'object' && !Array.isArray(item.deliveryAddress) ? (
-                  <>
-                    {item.deliveryAddress.name ? <Text style={styles.addressText}>Name: {item.deliveryAddress.name}</Text> : null}
-                    {item.deliveryAddress.mobile ? <Text style={styles.addressText}>Mobile: {item.deliveryAddress.mobile}</Text> : null}
-                    {/* If address is an object, display its fields line by line */}
-                    {item.deliveryAddress.address && typeof item.deliveryAddress.address === 'object' && !Array.isArray(item.deliveryAddress.address) ? (
-                      <>
-                        {item.deliveryAddress.address.street ? <Text style={styles.addressText}>Street: {item.deliveryAddress.address.street}</Text> : null}
-                        {item.deliveryAddress.address.area ? <Text style={styles.addressText}>Area: {item.deliveryAddress.address.area}</Text> : null}
-                        {item.deliveryAddress.address.house ? <Text style={styles.addressText}>House: {item.deliveryAddress.address.house}</Text> : null}
-                        {/* Add more fields as needed */}
-                      </>
-                    ) : (
-                      item.deliveryAddress.address ? <Text style={styles.addressText}>Address: {item.deliveryAddress.address}</Text> : null
-                    )}
-                    {item.deliveryAddress.locality ? <Text style={styles.addressText}>Locality: {item.deliveryAddress.locality}</Text> : null}
-                    {item.deliveryAddress.city ? <Text style={styles.addressText}>City: {item.deliveryAddress.city}</Text> : null}
-                    {item.deliveryAddress.state ? <Text style={styles.addressText}>State: {item.deliveryAddress.state}</Text> : null}
-                    {item.deliveryAddress.pincode ? <Text style={styles.addressText}>Pincode: {item.deliveryAddress.pincode}</Text> : null}
-                    {item.deliveryAddress.landmark ? <Text style={styles.addressText}>Landmark: {item.deliveryAddress.landmark}</Text> : null}
-                  </>
-                ) : (
-                  <Text style={styles.addressText}>
-                    {typeof item.deliveryAddress === 'string' ? item.deliveryAddress : 'N/A'}
-                  </Text>
-                )}
-            {item.orderStatus === 'Pending' && (
-            <View style={{ flexDirection: 'row', marginTop: 10 }}>
-              <TouchableOpacity
-                style={{
-                  backgroundColor: '#28a745',
-                  padding: 8,
-                  borderRadius: 6,
-                  flex: 1,
-                  alignItems: 'center',
-                  marginRight: 8,
-                }}
-                onPress={() => updateOrderStatus(item.orderId, 'Delivered')}
-              >
-                <Text style={{ color: '#fff', fontWeight: 'bold' }}>Mark as Delivered</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  backgroundColor: '#ff3b30',
-                  padding: 8,
-                  borderRadius: 6,
-                  flex: 1,
-                  alignItems: 'center',
-                }}
-                onPress={() => updateOrderStatus(item.orderId, 'Cancelled')}
-              >
-                <Text style={{ color: '#fff', fontWeight: 'bold' }}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          </View>
+          </TouchableOpacity>
         )}
         ListEmptyComponent={<Text style={styles.empty}>No orders found.</Text>}
       />
@@ -265,6 +205,14 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 12,
     elevation: 2,
+  },
+  minCard: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 12,
+    elevation: 2,
+    // Only show minimal info
   },
   orderId: { fontWeight: 'bold', fontSize: 16, marginBottom: 4 },
   productItem: { fontSize: 14, color: '#333', marginLeft: 8, marginTop: 2 },

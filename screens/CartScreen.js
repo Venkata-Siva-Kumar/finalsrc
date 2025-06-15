@@ -211,7 +211,7 @@ export default function CartScreen({ navigation, route }) {
             addr_mobile,
             pincode,
             locality,
-            address: { fullAddress: address },
+            address,
             city,
             state,
             landmark,
@@ -235,7 +235,7 @@ export default function CartScreen({ navigation, route }) {
             addr_mobile,
             pincode,
             locality,
-            address: { fullAddress: address },
+            address,
             city,
             state,
             landmark,
@@ -356,11 +356,9 @@ export default function CartScreen({ navigation, route }) {
   const editAddress = (index) => {
     const addr = addresses[index];
     let fullAddress = '';
-    try {
-      fullAddress = typeof addr.address === 'string'
-        ? JSON.parse(addr.address).fullAddress
-        : addr.address.fullAddress;
-    } catch {
+    if (typeof addr.address === 'string') {
+      fullAddress = addr.address;
+    } else {
       fullAddress = '';
     }
     setEditingIndex(index);

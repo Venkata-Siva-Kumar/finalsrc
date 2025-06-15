@@ -20,8 +20,6 @@ const db = mysql.createConnection({
 });
 
 
-
-
 db.connect(err => {
   if (err) {
     console.error('❌ Database connection failed:', err);
@@ -32,24 +30,58 @@ db.connect(err => {
 
 
 
+function isAtLeast18YearsOld(dobString) {
+  const dob = new Date(dobString);
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+    age--;
+  }
+  return age >= 18;
+}
+
 app.post('/signup', (req, res) => {
   const { fname, lname, mobile, password, gender, email, dob } = req.body;
   if (!fname || !lname || !mobile || !password || !gender) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
+  if (!dob) {
+    return res.status(400).json({ message: 'Date of birth is required.' });
+  }
+  if (!isAtLeast18YearsOld(dob)) {
+    return res.status(400).json({ message: 'You must be at least 18 years old to sign up.' });
+  }
   db.query('SELECT * FROM users WHERE mobile = ?', [mobile], async (err, results) => {
     if (err) return res.status(500).json({ message: 'Database error' });
-    if (results.length > 0) return res.status(400).json({ message: 'User already exists' });
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    db.query(
-      `INSERT INTO users (fname, lname, mobile, password, gender, email, dob) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [fname, lname, mobile, hashedPassword, gender, email || null, dob || null],
-      err => {
-        if (err) return res.status(500).json({ message: 'Error inserting user' });
-        res.json({ message: 'User registered successfully' });
+    if (results.length > 0) {
+      const user = results[0];
+      if (user.activity_status === 'inactive') {
+        // Reactivate and update user
+        const hashedPassword = await bcrypt.hash(password, 10);
+        db.query(
+          `UPDATE users SET fname=?, lname=?, password=?, gender=?, email=?, dob=?, activity_status='active' WHERE mobile=?`,
+          [fname, lname, hashedPassword, gender, email || null, dob || null, mobile],
+          err2 => {
+            if (err2) return res.status(500).json({ message: 'Error reactivating user' });
+            return res.json({ message: 'Account reactivated and updated successfully' });
+          }
+        );
+      } else {
+        return res.status(400).json({ message: 'User already exists' });
       }
-    );
+    } else {
+      // Normal signup
+      const hashedPassword = await bcrypt.hash(password, 10);
+      db.query(
+        `INSERT INTO users (fname, lname, mobile, password, gender, email, dob, activity_status) VALUES (?, ?, ?, ?, ?, ?, ?, 'active')`,
+        [fname, lname, mobile, hashedPassword, gender, email || null, dob || null],
+        err => {
+          if (err) return res.status(500).json({ message: 'Error inserting user' });
+          res.json({ message: 'User registered successfully' });
+        }
+      );
+    }
   });
 });
 // ...existing code...
@@ -61,7 +93,11 @@ app.post('/login', (req, res) => {
     if (err) return res.status(500).json({ message: 'Database error' });
     if (results.length === 0) return res.status(401).json({ message: 'Invalid mobile number' });
 
-    const hashedPassword = results[0].password;
+    const user = results[0];
+    if (user.activity_status !== 'active') {
+      return res.status(403).json({ message: 'Account is inactive. Please sign up again to reactivate.' });
+    }
+    const hashedPassword = user.password;
     bcrypt.compare(password, hashedPassword, (err, isMatch) => {
       if (err) return res.status(500).json({ message: 'Password comparison error' });
       if (!isMatch) return res.status(401).json({ message: 'Invalid password' });
@@ -214,6 +250,9 @@ app.post('/update-user', (req, res) => {
   if (!mobile || !fname || !lname || !gender) {
     return res.json({ success: false, message: 'Missing required fields' });
   }
+  if (!isAtLeast18YearsOld(dob)) {
+    return res.status(400).json({ message: 'You must be at least 18 years old.' });
+  }
   db.query(
     'UPDATE users SET fname = ?, lname = ?, email = ?, gender = ?, dob = ? WHERE mobile = ?',
     [fname, lname, email || null, gender, dob || null, mobile],
@@ -324,6 +363,7 @@ app.get('/orders', (req, res) => {
             pincode: order.pincode,
             landmark: order.landmark,
           },
+          userMobile: order.user_mobile, // <-- Add this line
         }));
         res.json(result);
       }
@@ -338,14 +378,13 @@ app.post('/addresses', (req, res) => {
   if (!user_id || !name || !addr_mobile || !pincode || !address) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
-  const addressStr = JSON.stringify(address); // Store as JSON string
   const sql = `
     INSERT INTO addresses (user_id, name, addr_mobile, pincode, locality, address, city, state, landmark)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
   db.query(
     sql,
-    [user_id, name, addr_mobile, pincode, locality, addressStr, city, state, landmark],
+    [user_id, name, addr_mobile, pincode, locality, address, city, state, landmark],
     (err, result) => {
       if (err) {
         console.error('❌ Error inserting address:', err);
@@ -369,7 +408,6 @@ app.put('/addresses/:id', (req, res) => {
   if (!user_id || !name || !addr_mobile || !pincode || !address) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
-  const addressStr = JSON.stringify(address);
   const sql = `
     UPDATE addresses
     SET user_id = ?, name = ?, addr_mobile = ?, pincode = ?, locality = ?, address = ?, city = ?, state = ?, landmark = ?
@@ -377,7 +415,7 @@ app.put('/addresses/:id', (req, res) => {
   `;
   db.query(
     sql,
-    [user_id, name, addr_mobile, pincode, locality, addressStr, city, state, landmark, id],
+    [user_id, name, addr_mobile, pincode, locality, address, city, state, landmark, id],
     (err, result) => {
       if (err) {
         console.error('❌ Error updating address:', err);
@@ -853,41 +891,20 @@ app.post('/delete-user', (req, res) => {
 
     const userId = results[0].id;
     const hashedPassword = results[0].password;
-    require('bcrypt').compare(password, hashedPassword, (err, isMatch) => {
+    bcrypt.compare(password, hashedPassword, (err, isMatch) => {
       if (err) return res.status(500).json({ success: false, message: 'Password comparison error' });
       if (!isMatch) return res.status(401).json({ success: false, message: 'Invalid password' });
 
-      // Delete related records first
-      db.query('DELETE FROM cart WHERE user_id = ?', [userId], (err1) => {
-        if (err1) return res.status(500).json({ success: false, message: 'Error deleting cart' });
-        db.query('DELETE FROM addresses WHERE user_id = ?', [userId], (err2) => {
-          if (err2) return res.status(500).json({ success: false, message: 'Error deleting addresses' });
-
-          // --- Delete order_items and orders ---
-          db.query('SELECT orderId FROM orders WHERE user_id = ?', [userId], (errOrders, orderRows) => {
-            if (errOrders) return res.status(500).json({ success: false, message: 'Error fetching orders' });
-            const orderIds = orderRows.map(row => row.orderId);
-            if (orderIds.length > 0) {
-              db.query('DELETE FROM order_items WHERE orderId IN (?)', [orderIds], (errItems) => {
-                if (errItems) return res.status(500).json({ success: false, message: 'Error deleting order items' });
-                db.query('DELETE FROM orders WHERE user_id = ?', [userId], (err3) => {
-                  if (err3) return res.status(500).json({ success: false, message: 'Error deleting orders' });
-                  db.query('DELETE FROM users WHERE id = ?', [userId], (err4) => {
-                    if (err4) return res.status(500).json({ success: false, message: 'Error deleting user' });
-                    res.json({ success: true });
-                  });
-                });
-              });
-            } else {
-              // No orders, just delete user
-              db.query('DELETE FROM users WHERE id = ?', [userId], (err4) => {
-                if (err4) return res.status(500).json({ success: false, message: 'Error deleting user' });
-                res.json({ success: true });
-              });
-            }
-          });
-        });
-      });
+      db.query(
+        `UPDATE users SET fname = '', lname = '', password = '', dob = NULL ,email = NULL, activity_status = 'inactive' WHERE id = ?`,
+        [userId],
+        (err2) => {
+          console.log(`User with mobile ${mobile} marked as inactive`,err2);
+          if (err2) return res.status(500).json({ success: false, message: 'Error updating user status' });
+          
+          res.json({ success: true });
+        }
+      );
     });
   });
 });
