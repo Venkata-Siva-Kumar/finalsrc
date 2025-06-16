@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext, useRef } from 'react';
+import React, { useState, useContext, useRef } from 'react';
 import {
   View,
   Text,
@@ -21,80 +21,72 @@ import { UserContext } from '../UserContext';
 export default function HomeScreen({ navigation, route }) {
   const [products, setProducts] = useState([]);
   const { cart, setCart } = useContext(CartContext);
-  const [quantities, setQuantities] = useState({});
   const [categories, setCategories] = useState([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalProduct, setModalProduct] = useState(null);
-  const [variantQuantities, setVariantQuantities] = useState({}); // {variantId: quantity}
+  const [variantQuantities, setVariantQuantities] = useState({});
 
-  // Get logged in user id from context
   const { user } = useContext(UserContext);
   const loggedInUserId = user?.id;
-
-  // Cache products per category for fast switching
   const productsCache = useRef({});
 
-  // Fetch products
-  useEffect(() => {
-    let url;
-    setLoading(true);
-    if (searchQuery.trim() !== '') {
-      url = `${API_BASE_URL}/products?search=${encodeURIComponent(searchQuery.trim())}`;
-      axios
-        .get(url)
-        .then((res) => {
-          setProducts(res.data.filter((p) => p.status === 'enabled'));
-        })
-        .catch(() => {
-          Alert.alert('Error', 'Failed to load products');
-        })
-        .finally(() => setLoading(false));
-    } else if (selectedCategoryId) {
-      // Use cache if available
-      if (productsCache.current[selectedCategoryId]) {
-        setProducts(productsCache.current[selectedCategoryId]);
-        setLoading(false);
-      } else {
-        url = `${API_BASE_URL}/products?category_id=${selectedCategoryId}`;
-        axios
-          .get(url)
-          .then((res) => {
-            const filtered = res.data.filter((p) => p.status === 'enabled');
-            productsCache.current[selectedCategoryId] = filtered;
-            setProducts(filtered);
-          })
-          .catch(() => {
-            Alert.alert('Error', 'Failed to load products');
-          })
-          .finally(() => setLoading(false));
-      }
-    } else {
-      setProducts([]);
-      setLoading(false);
-    }
-  }, [selectedCategoryId, searchQuery]);
-
   // Fetch categories from backend
-  useEffect(() => {
+  const fetchCategories = () => {
     axios
       .get(`${API_BASE_URL}/categories`)
       .then((res) => setCategories(res.data))
       .catch(() => Alert.alert('Error', 'Failed to load categories'));
-  }, []);
+  };
 
-  // Sync quantities with cart on mount/focus
+ const fetchProducts = () => {
+  let url;
+  setLoading(true);
+  if (searchQuery.trim() !== '') {
+    url = `${API_BASE_URL}/products?search=${encodeURIComponent(searchQuery.trim())}`;
+    axios
+      .get(url)
+      .then((res) => {
+        setProducts(res.data.filter((p) => p.status === 'enabled'));
+      })
+      .catch(() => {
+        Alert.alert('Error', 'Failed to load products');
+      })
+      .finally(() => setLoading(false));
+  } else if (selectedCategoryId) {
+    url = `${API_BASE_URL}/products?category_id=${selectedCategoryId}`;
+    axios
+      .get(url)
+      .then((res) => {
+        const filtered = res.data.filter((p) => p.status === 'enabled');
+        setProducts(filtered);
+      })
+      .catch(() => {
+        Alert.alert('Error', 'Failed to load products');
+      })
+      .finally(() => setLoading(false));
+  } else {
+    setProducts([]);
+    setLoading(false);
+  }
+};
+
   useFocusEffect(
-    React.useCallback(() => {
-      const qtyObj = {};
-      cart.forEach((item) => {
-        qtyObj[item.variant_id] = item.quantity;
-      });
-      setVariantQuantities(qtyObj);
-    }, [cart])
-  );
+  React.useCallback(() => {
+    // Clear the products cache so products are always fresh
+    productsCache.current = {};
+    fetchCategories();
+    fetchProducts();
+    // Sync quantities with cart
+    const qtyObj = {};
+    cart.forEach((item) => {
+      qtyObj[item.variant_id] = item.quantity;
+    });
+    setVariantQuantities(qtyObj);
+  }, [selectedCategoryId, searchQuery, cart])
+);
 
   // Add/update a variant to cart and sync with backend
   const handleAddVariantToCart = (product, variant, quantity) => {
@@ -151,7 +143,6 @@ export default function HomeScreen({ navigation, route }) {
 
   // Render product item
   const renderItem = ({ item }) => {
-    
     const validVariants = Array.isArray(item.variants)
       ? item.variants.filter(v => v && v.id)
       : [];
@@ -170,15 +161,14 @@ export default function HomeScreen({ navigation, route }) {
         <View style={styles.infoColumn}>
           <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
           {validVariants.length > 0 ? (
-  <Text style={styles.price}>
-    {validVariants[0].quantity_value} • ₹{Number(validVariants[0].price).toFixed(2)}
-  </Text>
-) : (
-  <Text style={styles.price}>No variants</Text>
-)}
+            <Text style={styles.price}>
+              {validVariants[0].quantity_value} • ₹{Number(validVariants[0].price).toFixed(2)}
+            </Text>
+          ) : (
+            <Text style={styles.price}>No variants</Text>
+          )}
         </View>
         {onlyOneVariant ? (
-          // For single-variant products, never show popup
           totalQty === 0 ? (
             <TouchableOpacity
               style={[styles.addButton, { paddingHorizontal: 30 }]}
@@ -251,7 +241,6 @@ export default function HomeScreen({ navigation, route }) {
             </View>
           )
         ) : (
-          // For multi-variant products, show popup as before
           totalQty === 0 ? (
             <TouchableOpacity
               style={styles.addButton}
@@ -334,7 +323,7 @@ export default function HomeScreen({ navigation, route }) {
                 borderTopLeftRadius: 16,
                 borderTopRightRadius: 16,
                 padding: 16,
-                maxHeight: '100%', // Increased from 60% to 85%
+                maxHeight: '100%',
                 position: 'relative',
               }}>
                 {/* Cross Icon at the top center */}
@@ -620,7 +609,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
-
   },
-  // ...other styles...
 });

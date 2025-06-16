@@ -338,6 +338,10 @@ export default function CartScreen({ navigation, route }) {
       Alert.alert('Cart Empty', 'Please add items to your cart before proceeding.');
       return;
     }
+    if (totalAmount < 500) {
+      Alert.alert('Minimum Order', 'The minimum order amount should be ₹500.');
+      return;
+    }
     if (selectedAddressIndex === null) {
       Alert.alert('No Delivery Address', 'Please select a delivery address.');
       return;
