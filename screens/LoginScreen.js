@@ -14,9 +14,8 @@ import {
 import { Image as ExpoImage } from 'expo-image';
 import axios from 'axios';
 import { UserContext } from '../UserContext';
-
 import { API_BASE_URL } from '../config';
- // Replace with your server IP
+
 
 export default function LoginScreen({ navigation }) {
   const [mobile, setMobile] = useState('');

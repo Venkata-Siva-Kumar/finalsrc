@@ -2,20 +2,19 @@ import React, { useEffect, useState, useLayoutEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, TextInput, TouchableOpacity } from 'react-native';
 import axios from 'axios';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { API_BASE_URL } from '../config';
 import AppHeaderIcon from './AppHeaderIcon'; 
 import * as Clipboard from 'expo-clipboard';
-import OrderDetailsScreen from './OrderDetailsScreen';
 
 const Tab = createMaterialTopTabNavigator();
 
-function OrdersTab({ orders, productMap, status, updateOrderStatus }) {
+const tabNames = ['Order Pending', 'Delivered', 'Cancelled'];
+
+function OrdersTab({ orders, productMap, status, updateOrderStatus, onOrderPress }) {
   const [search, setSearch] = useState('');
   const [filteredOrders, setFilteredOrders] = useState([]);
-  const navigation = useNavigation();
-
   useEffect(() => {
     const filtered = orders.filter(order => order.orderStatus === status);
     setFilteredOrders(filtered);
@@ -55,7 +54,7 @@ function OrdersTab({ orders, productMap, status, updateOrderStatus }) {
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.minCard}
-            onPress={() => navigation.navigate('OrderDetails', { order: item, productMap })}
+            onPress={() => onOrderPress(item, status)}
             activeOpacity={0.8}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
@@ -89,10 +88,21 @@ function OrdersTab({ orders, productMap, status, updateOrderStatus }) {
   );
 }
 
-export default function AdminOrdersScreen({ navigation }) {
+export default function AdminOrdersScreen({ navigation, route }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [productMap, setProductMap] = useState({});
+  const [tabIndex, setTabIndex] = useState(0);
+
+  // Update tabIndex if coming back from OrderDetailsScreen
+  useFocusEffect(
+    React.useCallback(() => {
+      if (route?.params?.tabIndex !== undefined && typeof route.params.tabIndex === 'number') {
+        setTabIndex(route.params.tabIndex);
+      }
+      fetchOrders();
+    }, [route?.params?.tabIndex])
+  );
 
   const fetchOrders = () => {
     setLoading(true);
@@ -112,44 +122,48 @@ export default function AdminOrdersScreen({ navigation }) {
       .finally(() => setLoading(false));
   };
 
-  useFocusEffect(
-    React.useCallback(() => {
-      fetchOrders();
-    }, [])
-  );
-
   const updateOrderStatus = async (orderId, status = 'Delivered') => {
-  try {
-    Alert.alert(
-      'Confirm',
-      status === 'Delivered'
-        ? 'Are you sure you want to mark this order as Delivered?'
-        : 'Are you sure you want to cancel this order?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Yes',
-          onPress: async () => {
-            await axios.put(`${API_BASE_URL}/orders/${orderId}/status`, { status });
-            Alert.alert('Success', status === 'Delivered' ? 'Order marked as Delivered' : 'Order Cancelled');
-            fetchOrders();
+    try {
+      Alert.alert(
+        'Confirm',
+        status === 'Delivered'
+          ? 'Are you sure you want to mark this order as Delivered?'
+          : 'Are you sure you want to cancel this order?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Yes',
+            onPress: async () => {
+              await axios.put(`${API_BASE_URL}/orders/${orderId}/status`, { status });
+              Alert.alert('Success', status === 'Delivered' ? 'Order marked as Delivered' : 'Order Cancelled');
+              fetchOrders();
+            },
           },
-        },
-      ],
-      { cancelable: true }
-    );
-    return;
-  } catch (err) {
-    Alert.alert('Error', 'Failed to update order status');
-  }
-};
+        ],
+        { cancelable: true }
+      );
+      return;
+    } catch (err) {
+      Alert.alert('Error', 'Failed to update order status');
+    }
+  };
 
   useLayoutEffect(() => {
     navigation.setOptions({
       title: 'Orders',
-      
     });
   }, [navigation]);
+
+  const handleOrderPress = (item, status) => {
+    const idx =
+      status === 'Pending'
+        ? 0
+        : status === 'Delivered'
+        ? 1
+        : 2;
+    setTabIndex(idx);
+    navigation.navigate('OrderDetails', { order: item, productMap, tabIndex: idx });
+  };
 
   if (loading) {
     return (
@@ -160,17 +174,31 @@ export default function AdminOrdersScreen({ navigation }) {
   }
 
   return (
-    <Tab.Navigator>
+    <Tab.Navigator
+      initialRouteName={tabNames[tabIndex]}
+      screenOptions={{
+        tabBarIndicatorStyle: { backgroundColor: '#ff9500' },
+        tabBarActiveTintColor: '#ff9500',
+        tabBarInactiveTintColor: '#333',
+        tabBarLabelStyle: { fontWeight: 'bold' },
+      }}
+      tabBarPosition="top"
+      screenListeners={{
+        tabPress: (e) => {
+          const idx = tabNames.indexOf(e.target.split('-')[0]);
+          if (idx !== -1) setTabIndex(idx);
+        }
+      }}
+    >
       <Tab.Screen name="Order Pending">
-        {() => <OrdersTab orders={orders} productMap={productMap} status="Pending" updateOrderStatus={updateOrderStatus} />}
+        {() => <OrdersTab orders={orders} productMap={productMap} status="Pending" updateOrderStatus={updateOrderStatus} onOrderPress={handleOrderPress} />}
       </Tab.Screen>
       <Tab.Screen name="Delivered">
-        {() => <OrdersTab orders={orders} productMap={productMap} status="Delivered" updateOrderStatus={updateOrderStatus} />}
+        {() => <OrdersTab orders={orders} productMap={productMap} status="Delivered" updateOrderStatus={updateOrderStatus} onOrderPress={handleOrderPress} />}
       </Tab.Screen>
-       <Tab.Screen name="Cancelled">
-      {() => <OrdersTab orders={orders} productMap={productMap} status="Cancelled" updateOrderStatus={updateOrderStatus} />}
-    </Tab.Screen>
-    
+      <Tab.Screen name="Cancelled">
+        {() => <OrdersTab orders={orders} productMap={productMap} status="Cancelled" updateOrderStatus={updateOrderStatus} onOrderPress={handleOrderPress} />}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 }

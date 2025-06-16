@@ -20,6 +20,7 @@ const db = mysql.createConnection({
 });
 
 
+
 db.connect(err => {
   if (err) {
     console.error('❌ Database connection failed:', err);
@@ -30,17 +31,6 @@ db.connect(err => {
 
 
 
-function isAtLeast18YearsOld(dobString) {
-  const dob = new Date(dobString);
-  const today = new Date();
-  let age = today.getFullYear() - dob.getFullYear();
-  const m = today.getMonth() - dob.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
-    age--;
-  }
-  return age >= 18;
-}
-
 app.post('/signup', (req, res) => {
   const { fname, lname, mobile, password, gender, email, dob } = req.body;
   if (!fname || !lname || !mobile || !password || !gender) {
@@ -49,9 +39,7 @@ app.post('/signup', (req, res) => {
   if (!dob) {
     return res.status(400).json({ message: 'Date of birth is required.' });
   }
-  if (!isAtLeast18YearsOld(dob)) {
-    return res.status(400).json({ message: 'You must be at least 18 years old to sign up.' });
-  }
+  
   db.query('SELECT * FROM users WHERE mobile = ?', [mobile], async (err, results) => {
     if (err) return res.status(500).json({ message: 'Database error' });
     if (results.length > 0) {
@@ -84,7 +72,7 @@ app.post('/signup', (req, res) => {
     }
   });
 });
-// ...existing code...
+
 
 // ✅ Login route
 app.post('/login', (req, res) => {
@@ -250,9 +238,7 @@ app.post('/update-user', (req, res) => {
   if (!mobile || !fname || !lname || !gender) {
     return res.json({ success: false, message: 'Missing required fields' });
   }
-  if (!isAtLeast18YearsOld(dob)) {
-    return res.status(400).json({ message: 'You must be at least 18 years old.' });
-  }
+  
   db.query(
     'UPDATE users SET fname = ?, lname = ?, email = ?, gender = ?, dob = ? WHERE mobile = ?',
     [fname, lname, email || null, gender, dob || null, mobile],

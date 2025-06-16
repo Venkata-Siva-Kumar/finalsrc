@@ -8,6 +8,7 @@ import getPrintHtml from './Print.js';
 export default function OrderDetailsScreen({ route, navigation }) {
   const { order, productMap } = route.params;
   const [loading, setLoading] = useState(false);
+  const [printing, setPrinting] = useState(false);
 
   const updateOrderStatus = async (status) => {
     setLoading(true);
@@ -20,7 +21,7 @@ export default function OrderDetailsScreen({ route, navigation }) {
       const data = await res.json();
       if (res.ok) {
         Alert.alert('Success', `Order marked as ${status}.`, [
-          { text: 'OK', onPress: () => navigation.goBack() }
+          { text: 'OK', onPress: () => navigation.navigate('AdminOrders', { tabIndex: route.params.tabIndex }) }
         ]);
       } else {
         Alert.alert('Error', data.message || 'Failed to update order status.');
@@ -32,6 +33,9 @@ export default function OrderDetailsScreen({ route, navigation }) {
   };
 
   const handlePrint = async () => {
+    if (printing) return; // Prevent multiple prints
+    setPrinting(true);
+
     try {
      // console.log('Print button pressed', order);
       if (!order.items || order.items.length === 0) {
@@ -43,6 +47,9 @@ export default function OrderDetailsScreen({ route, navigation }) {
     } catch (err) {
       console.error('Print error:', err);
       Alert.alert('Print Error', err.message || 'Failed to print');
+    }
+    finally {
+    setPrinting(false); // Always reset, even if cancelled or error
     }
   };
 
@@ -59,7 +66,8 @@ export default function OrderDetailsScreen({ route, navigation }) {
         {order.items && order.items.length > 0 ? (
           order.items.map((prod, idx) => (
             <Text key={idx} style={styles.value}>
-              • {prod.name || productMap[prod.productId || prod.id] || 'Unknown'} x {prod.quantity} @ ₹{prod.price}
+              • {prod.name || productMap[prod.productId || prod.id] || 'Unknown'}
+              {prod.quantity_value ? ` (${prod.quantity_value})` : ''} x {prod.quantity} @ ₹{prod.price}
             </Text>
           ))
         ) : (
@@ -111,7 +119,7 @@ export default function OrderDetailsScreen({ route, navigation }) {
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: '#007bff' }]}
             onPress={handlePrint}
-            disabled={loading}
+            disabled={loading || printing}
             >
             <Text style={styles.buttonText}>Print</Text>
             </TouchableOpacity>
