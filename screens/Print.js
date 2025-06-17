@@ -24,7 +24,7 @@ const getPrintHtml = (order, productMap) => {
 <b>Order ID</b> : ${order.orderId}
 <b>Date</b>     : ${order.orderDate ? new Date(order.orderDate).toLocaleString() : 'N/A'}
 ----------------------------------------------
-<b>${pad('Items', 19)}${pad('Qty', 10)}${pad('Rate', 10)}${pad('Value', 15)}</b>
+<b>${pad('Items', 19)}${pad('Qty', 6)}${pad('Rate', 10)}${pad('Value', 15)}</b>
 ----------------------------------------------
 `;
 
@@ -36,7 +36,7 @@ const getPrintHtml = (order, productMap) => {
         (prod.name || productMap[prod.product_id || prod.productId || prod.id] || 'Unknown') + variant,
         20
       );
-      const qty = pad(prod.quantity.toString(), 8);
+      const qty = pad(prod.quantity.toString(), 4);
       const rate = pad('₹' + price.toFixed(2), 10);
       const value = pad('₹' + (price * prod.quantity).toFixed(2), 15);
       html += `${name}${qty}${rate}${value}\n`;
@@ -46,7 +46,7 @@ const getPrintHtml = (order, productMap) => {
   }
 
   html += `----------------------------------------------
-<b>Items</b>: ${order.items ? order.items.length : 0}          <b>Qty</b>: ${order.items ? order.items.reduce((sum, item) => sum + Number(item.quantity), 0) : 0}   <b>Total</b>  : ₹${Number(order.totalAmount).toFixed(2)}
+<b>Items</b>: ${order.items ? order.items.length : 0}       <b>Qty</b>: ${order.items ? order.items.reduce((sum, item) => sum + Number(item.quantity), 0) : 0}  <b>Total</b> : ₹${Number(order.totalAmount).toFixed(2)}
 ----------------------------------------------
 <b>Address:</b>
 ${order.deliveryAddress && typeof order.deliveryAddress === 'object' && !Array.isArray(order.deliveryAddress)? `
@@ -55,8 +55,8 @@ ${order.deliveryAddress && typeof order.deliveryAddress === 'object' && !Array.i
   ${order.deliveryAddress.city || ''},${order.deliveryAddress.state || ''},
   ${order.deliveryAddress.pincode || ''},${order.deliveryAddress.landmark || ''}`: 'No delivery address provided.'}
 ----------------------------------------------
-<div style="font-size: 15px;"><b>Total Payable Amount</b>: ₹${Number(order.totalAmount).toFixed(2)}</div>
-
+<div style="font-size: 15px;margin-left:30px;"><b>Total Amount</b>: ₹${Number(order.totalAmount).toFixed(2)}</div>
+<div style="font-size: 15px;font-style: italic;margin-left:40px; margin-top:-10px;"><strong>Payment Type: Cash</strong></div>
     This is computer generated invoice.
       <b>Thank you for shopping with us!</b>
 ----------------------------------------------
