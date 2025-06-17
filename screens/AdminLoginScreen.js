@@ -78,7 +78,7 @@ export default function AdminLoginScreen({ navigation }) {
           focusedField === 'mobile' && styles.inputFocused
         ]}
         placeholder="Admin Mobile Number"
-        maxwidth={10}
+        maxLength={10}
         placeholderTextColor="#888"
         keyboardType="phone-pad"
         value={mobile}

@@ -46,7 +46,7 @@ const getPrintHtml = (order, productMap) => {
   }
 
   html += `----------------------------------------------
-<b>Items</b>: ${order.items ? order.items.length : 0}       <b>Qty</b>: ${order.items ? order.items.reduce((sum, item) => sum + Number(item.quantity), 0) : 0}  <b>Total</b> : ₹${Number(order.totalAmount).toFixed(2)}
+<b>Items</b>: ${order.items ? order.items.length : 0}       <b>Qty</b>: ${order.items ? order.items.reduce((sum, item) => sum + Number(item.quantity), 0) : 0}  <b>Total</b>  : ₹${Number(order.totalAmount).toFixed(2)}
 ----------------------------------------------
 <b>Address:</b>
 ${order.deliveryAddress && typeof order.deliveryAddress === 'object' && !Array.isArray(order.deliveryAddress)? `

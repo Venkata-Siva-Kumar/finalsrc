@@ -20,7 +20,6 @@ const db = mysql.createConnection({
 });
 
 
-
 db.connect(err => {
   if (err) {
     console.error('❌ Database connection failed:', err);
@@ -311,10 +310,12 @@ app.get('/orders', (req, res) => {
          oi.*, 
          p.name AS product_name, 
          v.quantity_value, 
-         v.price AS variant_price
+         v.price AS variant_price,
+         img.image_data, img.mime_type
        FROM order_items oi
        JOIN products p ON oi.productId = p.id
        JOIN product_variants v ON oi.variantId = v.id
+       LEFT JOIN images img ON img.product_id = p.id
        WHERE oi.orderId IN (?)`,
       [orderIds],
       (err2, items) => {
@@ -330,6 +331,9 @@ app.get('/orders', (req, res) => {
             quantity_value: item.quantity_value,
             product_id: item.productId,
             variant_id: item.variantId,
+            image_url: item.image_data
+              ? `data:${item.mime_type || 'image/jpeg'};base64,${item.image_data.toString('base64')}`
+              : null,
           });
         });
         // Attach items to orders
@@ -349,7 +353,7 @@ app.get('/orders', (req, res) => {
             pincode: order.pincode,
             landmark: order.landmark,
           },
-          userMobile: order.user_mobile, // <-- Add this line
+          userMobile: order.user_mobile,
         }));
         res.json(result);
       }

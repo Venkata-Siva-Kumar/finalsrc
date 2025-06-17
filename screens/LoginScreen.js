@@ -17,6 +17,7 @@ import axios from 'axios';
 import { UserContext } from '../UserContext';
 import { API_BASE_URL } from '../config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function LoginScreen({ navigation }) {
   const [mobile, setMobile] = useState('');
@@ -24,6 +25,8 @@ export default function LoginScreen({ navigation }) {
   const [focusedField, setFocusedField] = useState('');
   const [scaleValue] = useState(new Animated.Value(1));
   const { setUser, setUserMobile } = useContext(UserContext);
+  const [touched, setTouched] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
   
   const handleLogin = async () => {
   if (!mobile || !password) {
@@ -108,19 +111,21 @@ export default function LoginScreen({ navigation }) {
         onBlur={() => setFocusedField('')}
       />
 
-      <TextInput
-        style={[
-          styles.input,
-          focusedField === 'password' && styles.inputFocused
-        ]}
-        placeholder="Password"
-        placeholderTextColor="#888"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-        onFocus={() => setFocusedField('password')}
-        onBlur={() => setFocusedField('')}
-      />
+      <View style={[ styles.input,{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, marginBottom: 20 }]}>
+          <TextInput
+            placeholder="Password"
+            placeholderTextColor="#888"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+            style={{ flex: 1,fontSize: 16,color: '#333',paddingVertical: 0, paddingHorizontal: 0,}}
+            onFocus={() => setFocusedField('password')}
+            onBlur={() => setFocusedField('')}
+          />
+          <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={{ padding: 4 }}>
+            <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={24} color="#888" />
+          </TouchableOpacity>
+        </View>
 
       <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
         <TouchableOpacity

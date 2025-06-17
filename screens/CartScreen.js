@@ -152,7 +152,7 @@ export default function CartScreen({ navigation, route }) {
     }
 
     if (!isAllowed) {
-      Alert.alert('Not deliverable for this pincode', pincode);
+      Alert.alert('Delivery Unavailable', `Sorry, we do not deliver to your pincode ${pincode} at the moment.`);
       setLocation('');
       setPincodeValid(false);
       return;
@@ -586,6 +586,7 @@ export default function CartScreen({ navigation, route }) {
               onChangeText={(text) => setAddressForm({ ...addressForm, name: text })}
               placeholder="Name"
               placeholderTextColor="#888"
+              maxLength={30}
             />
 
             <Text>Mobile Number <Text style={{ color: 'red' }}> *</Text></Text>
@@ -615,9 +616,10 @@ export default function CartScreen({ navigation, route }) {
               style={[styles.input, { height: 80 }, addressTouched.address && !addressForm.address ? styles.inputError : null]}
               value={addressForm.address}
               onChangeText={(text) => setAddressForm({ ...addressForm, address: text })}
-              placeholder="FullAddress(Flat,House No,Building,Company,Apartment)"
+              placeholder="Address(Flat,House No,Building,Company,Apartment)"
               placeholderTextColor="#888"
               multiline={true}
+              maxLength={100}
             />
 
             <Text>Locality/Area/Street <Text style={{ color: 'red' }}> *</Text> </Text>
@@ -627,6 +629,7 @@ export default function CartScreen({ navigation, route }) {
               onChangeText={(text) => setAddressForm({ ...addressForm, locality: text })}
               placeholder="Locality"
               placeholderTextColor="#888"
+              maxLength={30}
             />
 
             <Text>City/Town</Text>
@@ -636,6 +639,7 @@ export default function CartScreen({ navigation, route }) {
               onChangeText={(text) => setAddressForm({ ...addressForm, city: text })}
               placeholder="City/Town"
               placeholderTextColor="#888"
+              maxLength={30}
             />
 
             <Text>State/Province/Region</Text>
@@ -645,6 +649,8 @@ export default function CartScreen({ navigation, route }) {
               onChangeText={(text) => setAddressForm({ ...addressForm, state: text })}
               placeholder="State/Province/Region"
               placeholderTextColor="#888"
+              maxLength={30}
+
             />
 
             <Text>Landmark(Optional)</Text>
@@ -654,6 +660,8 @@ export default function CartScreen({ navigation, route }) {
               onChangeText={(text) => setAddressForm({ ...addressForm, landmark: text })}
               placeholder="Landmark(Optional)"
               placeholderTextColor="#888"
+              maxLength={30}
+
             />
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 }}>

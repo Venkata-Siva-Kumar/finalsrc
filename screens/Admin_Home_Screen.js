@@ -437,10 +437,10 @@ function AddProductTab({ onProductAdded }) {
         <Text style={styles.buttonText}>Add Variant</Text>
       </TouchableOpacity>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-        <TouchableOpacity style={[styles.button, { backgroundColor: '#888', flex: 1, marginRight: 6 }]} onPress={pickImage} >
+        <TouchableOpacity style={[styles.button, { flex: 1, marginRight: 6 }]} onPress={pickImage} >
           <Text style={styles.buttonText}>Take Photo</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.button, { backgroundColor: '#888', flex: 1, marginLeft: 6 }]} onPress={pickImageFromGallery}>
+        <TouchableOpacity style={[styles.button, { flex: 1, marginLeft: 6 }]} onPress={pickImageFromGallery}>
           <Text style={styles.buttonText}>Upload Photo</Text>
         </TouchableOpacity>
       </View>

@@ -98,9 +98,13 @@ export default function OrdersScreen({ route, navigation }) {
         data={[...filteredOrders].sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))}
         keyExtractor={item => item.orderId?.toString()}
         renderItem={({ item }) => (
-          <View style={styles.orderItem}>
+          <TouchableOpacity
+            style={styles.orderItem}
+            onPress={() => navigation.navigate('OrderDetailsUser', { order: item })}
+            activeOpacity={0.8}
+          >
             <Text style={{ fontWeight: 'bold' }}>Order ID: {item.orderId}</Text>
-            <Text> Date: {item.orderDate ? new Date(item.orderDate).toLocaleDateString() : 'N/A'} </Text>
+            <Text>Date: {item.orderDate ? new Date(item.orderDate).toLocaleDateString() : 'N/A'}</Text>
             <Text
               style={{
                 color:
@@ -116,52 +120,11 @@ export default function OrdersScreen({ route, navigation }) {
             >
               Status: {item.orderStatus}
             </Text>
-            <Text style={{ fontWeight: 'bold' }}>Total : ₹{item.totalAmount}</Text>
-            {Array.isArray(item.items) && item.items.length > 0 && (
-              <>
-                <Text style={{ marginTop: 8, fontWeight: 'bold' }}>Products:</Text>
-                {item.items.map((prod, idx) => (
-                  <View key={idx} style={{ marginLeft: 10, marginBottom: 4 }}>
-                    <Text>
-                      {prod.name} ({prod.quantity_value}) x {prod.quantity} --- @ ₹{prod.price * prod.quantity}
-                    </Text>
-                  </View>
-                ))}
-              </>
-            )}
-            <Text style={{ marginTop: 8, fontWeight: 'bold' }}>Delivery Address:</Text>
-            {item.deliveryAddress && typeof item.deliveryAddress === 'object' && !Array.isArray(item.deliveryAddress) ? (
-  <>
-    <Text>
-      {item.deliveryAddress.address && typeof item.deliveryAddress.address === 'object'
-        ? [
-            item.deliveryAddress.address.house,
-            item.deliveryAddress.address.street,
-            item.deliveryAddress.address.area,
-            item.deliveryAddress.locality,
-            item.deliveryAddress.city,
-            item.deliveryAddress.state,
-            item.deliveryAddress.pincode,
-            item.deliveryAddress.landmark
-          ].filter(Boolean).join(', ')
-        : [
-            item.deliveryAddress.address,
-            item.deliveryAddress.locality,
-            item.deliveryAddress.city,
-            item.deliveryAddress.state,
-            item.deliveryAddress.pincode,
-            item.deliveryAddress.landmark
-          ].filter(Boolean).join(', ')
-      }
-    </Text>
-    {item.deliveryAddress.mobile ? (
-      <Text style={{ fontWeight: 'bold' }} >Mobile: {item.deliveryAddress.mobile}</Text>
-    ) : null}
-  </>
-) : (
-  <Text>{typeof item.deliveryAddress === 'string' ? item.deliveryAddress : 'N/A'}</Text>
-)}
-          </View>
+            <Text style={{ fontWeight: 'bold', color: '#007aff' }}>
+              Amount: ₹{item.totalAmount}
+            </Text>
+            <Ionicons name="chevron-forward" size={22} color="#888" style={{ position: 'absolute', right: 16, top: 24 }} />
+          </TouchableOpacity>
         )}
         ListEmptyComponent={<Text>No orders found.</Text>}
       />

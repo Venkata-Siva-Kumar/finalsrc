@@ -23,6 +23,8 @@ import { UserProvider } from './UserContext';
 import ContactCenterScreen  from "./screens/ContactCenterScreen";
 import AppHeaderIcon from './screens/AppHeaderIcon'; // Adjust the path if needed
 import OrderDetailsScreen from './screens/OrderDetailsScreen';
+import OrderDetailsUserScreen from './screens/OrderDetailsUserScreen'; // Adjust the path if needed
+
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
@@ -125,6 +127,7 @@ export default function App() {
             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ headerShown: true ,headerRight: () => <AppHeaderIcon />}} />  
             <Stack.Screen name="ContactCenter" component={ContactCenterScreen} options={{ headerShown: true, title: "Contact Center",}} />
             <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} options={{ headerShown: true, title: "Order Details" }} /> 
+            <Stack.Screen name="OrderDetailsUser" component={OrderDetailsUserScreen} options={{ headerShown: true, title: "Order Details" }} />
           </Stack.Navigator>
         </NavigationContainer>
       </CartProvider>

@@ -197,6 +197,7 @@ export default function ProfileScreen({ route, navigation }) {
         style={styles.input}
         value={fname}
         onChangeText={setFname}
+        maxLength={20}
       />
       <TextInput
         placeholder="Last Name"
@@ -204,6 +205,7 @@ export default function ProfileScreen({ route, navigation }) {
         style={styles.input}
         value={lname}
         onChangeText={setLname}
+        maxLength={20}
       />
       <TextInput
         placeholder="Mobile Number"

@@ -158,7 +158,7 @@ export default function SignupScreen({ navigation }) {
               touched.fname && !fname ? styles.inputError : styles.inputUnique
             ]}
             value={fname}
-            maxLength={15}
+            maxLength={20}
             onChangeText={text => {
               setFname(text);
               setTouched(t => ({ ...t, fname: false }));
@@ -177,7 +177,7 @@ export default function SignupScreen({ navigation }) {
               touched.lname && !lname ? styles.inputError : styles.inputUnique
             ]}
             value={lname}
-            maxLength={15}
+            maxLength={20}
             onChangeText={text => {
               setLname(text);
               setTouched(t => ({ ...t, lname: false }));
