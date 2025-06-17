@@ -4,6 +4,7 @@ import {
   Alert, Image, TextInput, ActivityIndicator, Modal,
   ScrollView, KeyboardAvoidingView, Platform
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useFocusEffect } from '@react-navigation/native';
 import { CartContext } from './CartContext';
@@ -339,7 +340,7 @@ export default function CartScreen({ navigation, route }) {
       return;
     }
     if (totalAmount < 500) {
-      Alert.alert('Minimum Order', 'The minimum order amount should be ₹500.');
+      Alert.alert('Minimum Order', 'The minimum cart value should be ₹500.');
       return;
     }
     if (selectedAddressIndex === null) {
@@ -525,7 +526,16 @@ export default function CartScreen({ navigation, route }) {
                   style={[styles.addressSelectable]}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                    <View style={[styles.checkbox, isSelected && styles.checkboxSelected]} />
+                    {/* Checkbox */}
+                    <View style={[
+                      styles.checkbox,
+                      isSelected && styles.checkboxSelected,
+                      { justifyContent: 'center', alignItems: 'center' }
+                    ]}>
+                      {isSelected && (
+                        <Ionicons name="checkmark" size={18} color="#fff" />
+                      )}
+                    </View>
                     <View style={{ marginLeft: 10, flexShrink: 1 }}>
                       <Text style={{ fontWeight: 'bold' }}>{addr.name}</Text>
                       <Text numberOfLines={2}>
@@ -738,22 +748,28 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   addressSelectable: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+    backgroundColor: '#fff',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomColor: '#ddd',
-    borderBottomWidth: 1,
   },
   checkbox: {
     width: 22,
     height: 22,
+    borderRadius: 4,
     borderWidth: 2,
     borderColor: '#007bff',
-    borderRadius: 3,
+    backgroundColor: '#fff',
+    marginRight: 8,
   },
   checkboxSelected: {
     backgroundColor: '#007bff',
+    borderColor: '#007bff',
   },
   proceedButton: {
     backgroundColor: '#007bff',

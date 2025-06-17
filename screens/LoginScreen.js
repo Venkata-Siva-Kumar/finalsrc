@@ -9,13 +9,14 @@ import {
   Alert,
   StyleSheet,
   Animated,
-  
+  Keyboard,
+  TouchableWithoutFeedback,  
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import axios from 'axios';
 import { UserContext } from '../UserContext';
 import { API_BASE_URL } from '../config';
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen({ navigation }) {
   const [mobile, setMobile] = useState('');
@@ -52,6 +53,7 @@ export default function LoginScreen({ navigation }) {
         // ...add other fields if needed
       });
       setUserMobile(userData.mobile);
+      await AsyncStorage.setItem('user', JSON.stringify(userData));
     
     navigation.replace('Main', { userMobile: userData.mobile }); // Pass mobile to Main
 
@@ -81,7 +83,7 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
-    
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
     <View style={styles.container}>
        <ExpoImage
         source={require('../icon_gif.gif')}
@@ -162,6 +164,7 @@ export default function LoginScreen({ navigation }) {
       </View>
 
     </View>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -174,12 +177,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   logo: {
-    width: 200,
-    height: 200,
+    width: 150,
+    height: 150,
     resizeMode: 'contain',
     alignContent: 'center',
     alignSelf: 'center',
-    marginBottom: 20,
+    marginBottom: 70,
     borderRadius: 40,
     marginTop: -200,
     resizeMode: 'contain',

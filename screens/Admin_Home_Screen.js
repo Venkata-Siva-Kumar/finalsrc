@@ -666,49 +666,53 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
                 </TouchableOpacity>
               </View>
               <View style={styles.infoColumn}>
-                <Text style={styles.name}>{item.name}</Text>
-                {/* <Text style={styles.price}>₹{item.price}</Text> */}
-                
-                {/* Enable/Disable Toggle Button */}
-                <View style={{ flexDirection: 'row', marginTop: 8 }}>
-                  <TouchableOpacity
-                    style={[
-                      styles.button,
-                      {
-                        backgroundColor: item.status === 'enabled' ? '#28a745' : '#dc3545',
-                        paddingVertical: 6,
-                        paddingHorizontal: 16,
-                      },
-                    ]}
-                    onPress={() =>
-                      updateStatus(item.id, item.status === 'enabled' ? 'disabled' : 'enabled')
-                    }
-                    disabled={loadingId === item.id}  >
-                    <Text style={styles.buttonText}>
-                      {item.status === 'enabled' ? 'Enabled' : 'Disabled'}
-                    </Text>
-                  </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={styles.name}>{item.name}</Text>
+                  {/* Buttons in a column at the right of the name */}
+                  <View style={{ flexDirection: 'column', marginLeft: 12 }}>
+                    <TouchableOpacity
+                      style={[
+                        styles.button,
+                        {
+                          backgroundColor: item.status === 'enabled' ? '#28a745' : '#dc3545',
+                          paddingVertical: 6,
+                          paddingHorizontal: 16,
+                          marginBottom: 8,
+                          width: 110,
+                        },
+                      ]}
+                      onPress={() =>
+                        updateStatus(item.id, item.status === 'enabled' ? 'disabled' : 'enabled')
+                      }
+                      disabled={loadingId === item.id}
+                    >
+                      <Text style={styles.buttonText}>
+                        {item.status === 'enabled' ? 'Enabled' : 'Disabled'}
+                      </Text>
+                    </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={[
-                      styles.button,
-                      { backgroundColor: '#007aff', marginLeft: 8, paddingVertical: 6, paddingHorizontal: 12 }
-                    ]}
-                    onPress={() => openEditModal(item)}
-                  >
-                    <Text style={styles.buttonText}>Edit</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={[
-                      styles.button,
-                      { backgroundColor: '#ff3b30', marginLeft: 8, paddingVertical: 6, paddingHorizontal: 12 }
-                    ]}
-                    onPress={() => removeProduct(item.id)}
-                  >
-                    <Text style={styles.buttonText}>Remove</Text>
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.button,
+                        { backgroundColor: '#007aff', paddingVertical: 6, paddingHorizontal: 12, marginBottom: 8, width: 110 }
+                      ]}
+                      onPress={() => openEditModal(item)}
+                    >
+                      <Text style={styles.buttonText}>Edit</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.button,
+                        { backgroundColor: '#ff3b30', paddingVertical: 6, paddingHorizontal: 12, width: 110 }
+                      ]}
+                      onPress={() => removeProduct(item.id)}
+                    >
+                      <Text style={styles.buttonText}>Remove</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
+                {/* You can add more product info below if needed */}
               </View>
             </View>
           </View>

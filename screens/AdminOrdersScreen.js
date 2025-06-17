@@ -57,8 +57,10 @@ function OrdersTab({ orders, productMap, status, updateOrderStatus, onOrderPress
             onPress={() => onOrderPress(item, status)}
             activeOpacity={0.8}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, justifyContent: 'space-between' }}>
               <Text style={styles.orderId}>Order ID: {item.orderId}</Text>
+              {/* Add this icon to indicate navigation */}
+              <Ionicons name="chevron-forward" size={22} color="#888" />
             </View>
             <Text>User: {item.userMobile}</Text>
             <Text>Total: ₹{item.totalAmount}</Text>
@@ -175,7 +177,7 @@ export default function AdminOrdersScreen({ navigation, route }) {
 
   return (
     <Tab.Navigator
-      initialRouteName={tabNames[tabIndex]}
+      initialRouteName={tabNames[0]}
       screenOptions={{
         tabBarIndicatorStyle: { backgroundColor: '#ff9500' },
         tabBarActiveTintColor: '#ff9500',

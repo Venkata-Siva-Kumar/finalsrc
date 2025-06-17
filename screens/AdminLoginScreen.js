@@ -7,6 +7,8 @@ import {
   Alert,
   StyleSheet,
   Animated,
+  Keyboard,
+  TouchableWithoutFeedback,  
 } from 'react-native';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
@@ -67,6 +69,7 @@ export default function AdminLoginScreen({ navigation }) {
   };
 
   return (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
     <View style={styles.container}>
       <Text style={styles.header}>Admin Login 🧑‍💼</Text>
       <TextInput
@@ -111,6 +114,7 @@ export default function AdminLoginScreen({ navigation }) {
           </Animated.View>
           
     </View>
+    </TouchableWithoutFeedback>
   );
 }
 

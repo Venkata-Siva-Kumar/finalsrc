@@ -21,7 +21,7 @@ export default function OrderDetailsScreen({ route, navigation }) {
       const data = await res.json();
       if (res.ok) {
         Alert.alert('Success', `Order marked as ${status}.`, [
-          { text: 'OK', onPress: () => navigation.navigate('AdminOrders', { tabIndex: route.params.tabIndex }) }
+          { text: 'OK', onPress: () => navigation.goBack() }
         ]);
       } else {
         Alert.alert('Error', data.message || 'Failed to update order status.');
@@ -115,15 +115,46 @@ export default function OrderDetailsScreen({ route, navigation }) {
           >
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Cancel</Text>}
           </TouchableOpacity>
-
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: '#007bff' }]}
             onPress={handlePrint}
             disabled={loading || printing}
-            >
+          >
             <Text style={styles.buttonText}>Print</Text>
-            </TouchableOpacity>
+          </TouchableOpacity>
+        </View>
+      )}
 
+      {/* Add this block for Delivered orders */}
+      {order.orderStatus === 'Delivered' && (
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: '#ff9500' }]}
+            onPress={() => updateOrderStatus('Pending')}
+            disabled={loading}
+          >
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Change to Pending</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: '#007bff' }]}
+            onPress={handlePrint}
+            disabled={loading || printing}
+          >
+            <Text style={styles.buttonText}>Print</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Add this block for Cancelled orders */}
+      {order.orderStatus === 'Cancelled' && (
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: '#ff9500' }]}
+            onPress={() => updateOrderStatus('Pending')}
+            disabled={loading}
+          >
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Change to Pending</Text>}
+          </TouchableOpacity>
         </View>
       )}
     </View>

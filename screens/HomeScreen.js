@@ -1,4 +1,4 @@
-import React, { useState, useContext, useRef } from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Image,
   ScrollView,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import axios from 'axios';
 import { TextInput } from 'react-native';
@@ -20,7 +21,7 @@ import { UserContext } from '../UserContext';
 
 export default function HomeScreen({ navigation, route }) {
   const [products, setProducts] = useState([]);
-  const { cart, setCart } = useContext(CartContext);
+  const { cart, setCart, cartLoaded } = useContext(CartContext);
   const [categories, setCategories] = useState([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,7 +34,15 @@ export default function HomeScreen({ navigation, route }) {
   const loggedInUserId = user?.id;
   const productsCache = useRef({});
 
-  // Fetch categories from backend
+  // Add this function inside your HomeScreen component
+  const syncVariantQuantitiesFromCart = () => {
+    const qtyObj = {};
+    cart.forEach((item) => {
+      qtyObj[item.variant_id] = item.quantity;
+    });
+    setVariantQuantities(qtyObj);
+  };
+
   const fetchCategories = () => {
     axios
       .get(`${API_BASE_URL}/categories`)
@@ -75,6 +84,7 @@ export default function HomeScreen({ navigation, route }) {
 
   useFocusEffect(
   React.useCallback(() => {
+    if (!cartLoaded) return; // Wait for cart to load!
     // Clear the products cache so products are always fresh
     productsCache.current = {};
     fetchCategories();
@@ -85,7 +95,7 @@ export default function HomeScreen({ navigation, route }) {
       qtyObj[item.variant_id] = item.quantity;
     });
     setVariantQuantities(qtyObj);
-  }, [selectedCategoryId, searchQuery, cart])
+  }, [selectedCategoryId, searchQuery, cartLoaded, cart])
 );
 
   // Add/update a variant to cart and sync with backend
@@ -297,7 +307,10 @@ export default function HomeScreen({ navigation, route }) {
       visible={modalVisible}
       transparent
       animationType="slide"
-      onRequestClose={() => setModalVisible(false)}
+      onRequestClose={() => {
+        setModalVisible(false);
+        syncVariantQuantitiesFromCart();
+      }}
     >
       <View style={{
         flex: 1,
@@ -306,7 +319,10 @@ export default function HomeScreen({ navigation, route }) {
       }}>
         <TouchableOpacity
           activeOpacity={1}
-          onPressOut={() => setModalVisible(false)}
+          onPressOut={() => {
+            setModalVisible(false);
+            syncVariantQuantitiesFromCart();
+          }}
           style={{ flex: 1 }}
         >
           <View style={{
@@ -328,7 +344,10 @@ export default function HomeScreen({ navigation, route }) {
               }}>
                 {/* Cross Icon at the top center */}
                 <TouchableOpacity
-                  onPress={() => setModalVisible(false)}
+                  onPress={() => {
+                    setModalVisible(false);
+                    syncVariantQuantitiesFromCart();
+                  }}
                   style={{
                     position: 'absolute',
                     top: -60,
@@ -461,6 +480,16 @@ export default function HomeScreen({ navigation, route }) {
       </View>
     </Modal>
   );
+
+  // Show loading spinner until cart is loaded
+  if (!cartLoaded) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#007bff" />
+        <Text>Loading your cart...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: 'transparent' }}>

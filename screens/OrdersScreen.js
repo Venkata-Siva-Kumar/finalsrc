@@ -131,27 +131,36 @@ export default function OrdersScreen({ route, navigation }) {
             )}
             <Text style={{ marginTop: 8, fontWeight: 'bold' }}>Delivery Address:</Text>
             {item.deliveryAddress && typeof item.deliveryAddress === 'object' && !Array.isArray(item.deliveryAddress) ? (
-              <>
-                {item.deliveryAddress.name ? <Text>Name: {item.deliveryAddress.name}</Text> : null}
-                {item.deliveryAddress.mobile ? <Text>Mobile: {item.deliveryAddress.mobile}</Text> : null}
-                {item.deliveryAddress.address && typeof item.deliveryAddress.address === 'object' ? (
-                  <>
-                    {item.deliveryAddress.address.street ? <Text>Street: {item.deliveryAddress.address.street}</Text> : null}
-                    {item.deliveryAddress.address.area ? <Text>Area: {item.deliveryAddress.address.area}</Text> : null}
-                    {item.deliveryAddress.address.house ? <Text>House: {item.deliveryAddress.address.house}</Text> : null}
-                  </>
-                ) : (
-                  item.deliveryAddress.address ? <Text>Address: {item.deliveryAddress.address}</Text> : null
-                )}
-                {item.deliveryAddress.locality ? <Text>Locality: {item.deliveryAddress.locality}</Text> : null}
-                {item.deliveryAddress.city ? <Text>City: {item.deliveryAddress.city}</Text> : null}
-                {item.deliveryAddress.state ? <Text>State: {item.deliveryAddress.state}</Text> : null}
-                {item.deliveryAddress.pincode ? <Text>Pincode: {item.deliveryAddress.pincode}</Text> : null}
-                {item.deliveryAddress.landmark ? <Text>Landmark: {item.deliveryAddress.landmark}</Text> : null}
-              </>
-            ) : (
-              <Text>{typeof item.deliveryAddress === 'string' ? item.deliveryAddress : 'N/A'}</Text>
-            )}
+  <>
+    <Text>
+      {item.deliveryAddress.address && typeof item.deliveryAddress.address === 'object'
+        ? [
+            item.deliveryAddress.address.house,
+            item.deliveryAddress.address.street,
+            item.deliveryAddress.address.area,
+            item.deliveryAddress.locality,
+            item.deliveryAddress.city,
+            item.deliveryAddress.state,
+            item.deliveryAddress.pincode,
+            item.deliveryAddress.landmark
+          ].filter(Boolean).join(', ')
+        : [
+            item.deliveryAddress.address,
+            item.deliveryAddress.locality,
+            item.deliveryAddress.city,
+            item.deliveryAddress.state,
+            item.deliveryAddress.pincode,
+            item.deliveryAddress.landmark
+          ].filter(Boolean).join(', ')
+      }
+    </Text>
+    {item.deliveryAddress.mobile ? (
+      <Text style={{ fontWeight: 'bold' }} >Mobile: {item.deliveryAddress.mobile}</Text>
+    ) : null}
+  </>
+) : (
+  <Text>{typeof item.deliveryAddress === 'string' ? item.deliveryAddress : 'N/A'}</Text>
+)}
           </View>
         )}
         ListEmptyComponent={<Text>No orders found.</Text>}

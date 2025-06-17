@@ -6,6 +6,7 @@ import MaskedView from '@react-native-masked-view/masked-view';
 import { UserContext } from '../UserContext'; 
 import { API_BASE_URL } from '../config';
 import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function AccountScreen({ navigation,route }) {
   // Example user data, replace with real data as needed
@@ -75,7 +76,10 @@ const [filteredOrders, setFilteredOrders] = useState([]);
       {
         text: 'Logout',
         style: 'destructive',
-        onPress: () => navigation.replace('Login'),
+        onPress: async () => {
+          await AsyncStorage.removeItem('user');
+          navigation.replace('Login');
+        },
       },
     ]);
   };

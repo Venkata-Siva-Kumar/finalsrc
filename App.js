@@ -1,4 +1,5 @@
-import React, { useContext, useState } from "react";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useContext, useEffect, useState } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -93,11 +94,23 @@ function AdminTabs() {
 }
 
 export default function App() {
+  const [initialRoute, setInitialRoute] = useState(null);
+
+  useEffect(() => {
+    const checkLogin = async () => {
+      const user = await AsyncStorage.getItem('user');
+      setInitialRoute(user ? 'Main' : 'Login');
+    };
+    checkLogin();
+  }, []);
+
+  if (initialRoute === null) return null; // or a splash screen
+
   return (
     <UserProvider>
       <CartProvider>
-        <NavigationContainer >
-          <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}  >
+        <NavigationContainer>
+          <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}  >
             <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: true }}  />
             <Stack.Screen name="AdminLogin" component={AdminLoginScreen} options={{ headerShown: true }} />
             <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: true }} />
