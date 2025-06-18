@@ -59,27 +59,8 @@ export default function PaymentScreen({ navigation, route }) {
     setIsPlacingOrder(true);
     try {
       const orderId = generateOrderId();
-      // ...existing code...
-
-    function getISTDateString() {
       const now = new Date();
-      // IST is UTC+5:30
-      const istOffset = 5.5 * 60 * 60 * 1000;
-      const istTime = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + istOffset);
-      // Format as 'YYYY-MM-DD HH:mm:ss'
-      const pad = n => n.toString().padStart(2, '0');
-      return (
-        istTime.getFullYear() + '-' +
-        pad(istTime.getMonth() + 1) + '-' +
-        pad(istTime.getDate()) + ' ' +
-        pad(istTime.getHours()) + ':' +
-        pad(istTime.getMinutes()) + ':' +
-        pad(istTime.getSeconds())
-      );
-    }
-
-    // ...inside handleOrderConfirm...
-    const orderDate = getISTDateString();
+      const orderDate = now.toISOString().slice(0, 19).replace('T', ' ');
 
       const orderData = {
         orderId,
