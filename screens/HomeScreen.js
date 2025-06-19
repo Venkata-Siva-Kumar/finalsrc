@@ -264,6 +264,10 @@ export default function HomeScreen({ navigation, route }) {
         />
         <View style={styles.infoColumn}>
           <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+          {/* Add this line for description */}
+          {item.description ? (
+            <Text style={styles.description} numberOfLines={2}>{item.description}</Text>
+          ) : null}
           {validVariants.length > 0 ? (
             <Text style={styles.price}>
               {validVariants[0].quantity_value} • ₹{Number(validVariants[0].price).toFixed(2)}
@@ -789,6 +793,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#222',
     marginBottom: 0,
+  },
+  description: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
   },
   price: {
     fontSize: 14,
