@@ -21,30 +21,6 @@ export default function OrderDetailsUserScreen({ route }) {
       }]}>{order.orderStatus}</Text></Text>
       <Text style={styles.label}>Total: <Text style={styles.value}>₹{order.totalAmount}</Text></Text>
 
-      <Text style={[styles.label, { marginTop: 16 }]}>Products:</Text>
-      {Array.isArray(order.items) && order.items.length > 0 ? (
-        order.items.map((prod, idx) => (
-          
-          <View key={idx} style={styles.productRow}>
-            
-            {prod.image_url ? (
-              <Image source={{ uri: prod.image_url }} style={styles.productImage} />
-            ) : (
-              <View style={[styles.productImage, { backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center' }]}>
-                <Text style={{ color: '#aaa' }}>No Image</Text>
-              </View>
-            )}
-            <View style={{ flex: 1, marginLeft: 10 }}>
-              <Text style={styles.productName}>{prod.name}</Text>
-              <Text>Qty: {prod.quantity} ({prod.quantity_value})</Text>
-              <Text>Price: ₹{prod.price} x {prod.quantity} = ₹{prod.price * prod.quantity}</Text>
-            </View>
-          </View>
-        ))
-      ) : (
-        <Text style={{ color: '#888' }}>No products found.</Text>
-      )}
-
       <Text style={[styles.label, { marginTop: 16 }]}>Delivery Address:</Text>
       <Text style={styles.value}>
         {order.deliveryAddress && typeof order.deliveryAddress === 'object'
@@ -70,6 +46,33 @@ export default function OrderDetailsUserScreen({ route }) {
       {order.deliveryAddress && order.deliveryAddress.mobile ? (
         <Text style={styles.value}>Mobile: {order.deliveryAddress.mobile}</Text>
       ) : null}
+
+      
+      <Text style={[styles.label, { marginTop: 16 }]}>Products:</Text>
+      {Array.isArray(order.items) && order.items.length > 0 ? (
+        order.items.map((prod, idx) => (
+          
+          <View key={idx} style={styles.productRow}>
+            
+            {prod.image_url ? (
+              <Image source={{ uri: prod.image_url }} style={styles.productImage} />
+            ) : (
+              <View style={[styles.productImage, { backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center' }]}>
+                <Text style={{ color: '#aaa' }}>No Image</Text>
+              </View>
+            )}
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={styles.productName}>{prod.name}</Text>
+              <Text>Qty: {prod.quantity} ({prod.quantity_value})</Text>
+              <Text>Price: ₹{prod.price} x {prod.quantity} = ₹{prod.price * prod.quantity}</Text>
+            </View>
+          </View>
+        ))
+      ) : (
+        <Text style={{ color: '#888' }}>No products found.</Text>
+      )}
+
+      
     </ScrollView>
   );
 }

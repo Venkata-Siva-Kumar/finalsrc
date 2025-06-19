@@ -1,3 +1,4 @@
+// ✅ Fully Fixed HomeScreen.js (No double refresh, refresh on focus or category/search change)
 import React, { useEffect, useState, useContext, useRef } from 'react';
 import {
   View,
@@ -22,7 +23,6 @@ import { UserContext } from '../UserContext';
 import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-
 export default function HomeScreen({ navigation, route }) {
   const [products, setProducts] = useState([]);
   const { cart, setCart, cartLoaded } = useContext(CartContext);
@@ -45,8 +45,8 @@ export default function HomeScreen({ navigation, route }) {
   const bannerTimer = useRef(null);
   const [isBannerPaused, setIsBannerPaused] = useState(false);
 
-  // Debounce search
-  const searchTimeout = useRef();
+  const lastCategory = useRef(selectedCategoryId);
+  const lastSearch = useRef(searchQuery);
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener(state => {
@@ -55,7 +55,6 @@ export default function HomeScreen({ navigation, route }) {
     return () => unsubscribe();
   }, []);
 
-  // Show no internet message if offline
   if (!isConnected) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -73,7 +72,6 @@ export default function HomeScreen({ navigation, route }) {
     setVariantQuantities(qtyObj);
   };
 
-  // Fetch categories with caching
   const fetchCategories = async () => {
     try {
       const cached = await AsyncStorage.getItem('categories');
@@ -86,7 +84,6 @@ export default function HomeScreen({ navigation, route }) {
     }
   };
 
-  // Fetch products with caching
   const fetchProducts = async () => {
     let url;
     setLoading(true);
@@ -101,27 +98,16 @@ export default function HomeScreen({ navigation, route }) {
         cacheKey = `products_cat_${selectedCategoryId}`;
       }
 
-      // 1. Show cached data instantly
       if (cacheKey) {
         const cached = await AsyncStorage.getItem(cacheKey);
         if (cached) setProducts(JSON.parse(cached));
       }
 
-      // 2. Fetch from server and update UI/cache
       if (url) {
         const res = await axios.get(url);
         const enabledProducts = res.data.filter((p) => p.status === 'enabled');
         setProducts(enabledProducts);
         AsyncStorage.setItem(cacheKey, JSON.stringify(enabledProducts));
-
-        // Remove cart items not in enabled products
-        // if (enabledProducts.length > 0 && cart.length > 0) {
-        //   const enabledProductIds = new Set(enabledProducts.map(p => p.id));
-        //   const filteredCart = cart.filter(item => enabledProductIds.has(item.product_id));
-        //   if (filteredCart.length !== cart.length) {
-        //     setCart(filteredCart);
-        //   }
-        // }
       } else {
         setProducts([]);
       }
@@ -133,23 +119,23 @@ export default function HomeScreen({ navigation, route }) {
     }
   };
 
-  // Debounced search
-  useEffect(() => {
-    if (searchTimeout.current) clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(() => {
-      fetchProducts();
-    }, 350);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, selectedCategoryId]);
-
   useFocusEffect(
     React.useCallback(() => {
       if (!cartLoaded) return;
       productsCache.current = {};
       fetchCategories();
 
+      const categoryChanged = lastCategory.current !== selectedCategoryId;
+      const searchChanged = lastSearch.current !== searchQuery;
+
+      if (categoryChanged || searchChanged) {
+        lastCategory.current = selectedCategoryId;
+        lastSearch.current = searchQuery;
+      }
+
+      fetchProducts(); // always run on focus
       syncVariantQuantitiesFromCart();
-    }, [selectedCategoryId, cartLoaded])
+    }, [cartLoaded, selectedCategoryId, searchQuery])
   );
 
   useFocusEffect(
