@@ -115,13 +115,13 @@ export default function HomeScreen({ navigation, route }) {
         AsyncStorage.setItem(cacheKey, JSON.stringify(enabledProducts));
 
         // Remove cart items not in enabled products
-        if (enabledProducts.length > 0 && cart.length > 0) {
-          const enabledProductIds = new Set(enabledProducts.map(p => p.id));
-          const filteredCart = cart.filter(item => enabledProductIds.has(item.product_id));
-          if (filteredCart.length !== cart.length) {
-            setCart(filteredCart);
-          }
-        }
+        // if (enabledProducts.length > 0 && cart.length > 0) {
+        //   const enabledProductIds = new Set(enabledProducts.map(p => p.id));
+        //   const filteredCart = cart.filter(item => enabledProductIds.has(item.product_id));
+        //   if (filteredCart.length !== cart.length) {
+        //     setCart(filteredCart);
+        //   }
+        // }
       } else {
         setProducts([]);
       }
@@ -147,7 +147,7 @@ export default function HomeScreen({ navigation, route }) {
       if (!cartLoaded) return;
       productsCache.current = {};
       fetchCategories();
-      
+
       syncVariantQuantitiesFromCart();
     }, [selectedCategoryId, cartLoaded])
   );
@@ -794,7 +794,7 @@ const styles = StyleSheet.create({
     color: '#222',
     marginBottom: 0,
   },
-  description: {
+   description: {
     fontSize: 14,
     color: '#666',
     marginBottom: 4,
