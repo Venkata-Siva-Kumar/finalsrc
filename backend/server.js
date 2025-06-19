@@ -20,6 +20,8 @@ const db = mysql.createConnection({
 });
 
 
+
+
 db.connect(err => {
   if (err) {
     console.error('❌ Database connection failed:', err);
@@ -898,6 +900,78 @@ app.post('/delete-user', (req, res) => {
     });
   });
 });
+
+
+app.get('/banner', (req, res) => {
+  db.query('SELECT * FROM banners WHERE active=1 ORDER BY id DESC', (err, results) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    const banners = results.map(banner => ({
+      id: banner.id,
+      active: !!banner.active,
+      image_url: banner.image_data
+        ? `data:${banner.mime_type || 'image/jpeg'};base64,${banner.image_data.toString('base64')}`
+        : null,
+    }));
+    res.json(banners);
+  });
+});
+// Replace your /banner GET endpoint with this:
+app.get('/banner-admin', (req, res) => {
+  db.query('SELECT * FROM banners ORDER BY id DESC', (err, results) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    const banners = results.map(banner => ({
+      id: banner.id,
+      active: !!banner.active,
+      image_url: banner.image_data
+        ? `data:${banner.mime_type || 'image/jpeg'};base64,${banner.image_data.toString('base64')}`
+        : null,
+    }));
+    res.json(banners);
+  });
+});
+
+
+// Only insert the new banner, do NOT update any existing banners' active status!
+app.post('/banner', (req, res) => {
+  const { image_base64, mime_type } = req.body;
+  if (!image_base64) return res.status(400).json({ error: 'No image' });
+  const imageBuffer = Buffer.from(image_base64, 'base64');
+  db.query(
+    'INSERT INTO banners (image_data, mime_type, active) VALUES (?, ?, 0)', // active=0 by default
+    [imageBuffer, mime_type || 'image/jpeg'],
+    (err, result) => {
+      if (err) return res.status(500).json({ error: 'DB error' });
+      res.json({ success: true, id: result.insertId });
+    }
+  );
+});
+
+// Activate a banner (without deactivating others)
+app.put('/banner/:id/activate', (req, res) => {
+  const { id } = req.params;
+  db.query('UPDATE banners SET active=1 WHERE id=?', [id], (err) => {
+    if (err) return res.status(500).json({ error: 'DB error' });
+    res.json({ success: true });
+  });
+});
+// Admin: Deactivate a banner
+app.put('/banner/:id/deactivate', (req, res) => {
+  const { id } = req.params;
+  db.query('UPDATE banners SET active=0 WHERE id=?', [id], (err) => {
+    if (err) return res.status(500).json({ error: 'DB error' });
+    res.json({ success: true });
+  });
+});
+
+// Admin: Remove (delete) a banner
+app.delete('/banner/:id', (req, res) => {
+  const { id } = req.params;
+  db.query('DELETE FROM banners WHERE id=?', [id], (err) => {
+    if (err) return res.status(500).json({ error: 'DB error' });
+    res.json({ success: true });
+  });
+});
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running on http://0.0.0.0:${PORT}`));

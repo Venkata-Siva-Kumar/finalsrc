@@ -1,5 +1,5 @@
 import React, { useEffect, useState,useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert,Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert,Linking, Platform } from 'react-native';
 import Ionicons from "react-native-vector-icons/Ionicons"; // Add this import
 import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
@@ -71,17 +71,23 @@ const [filteredOrders, setFilteredOrders] = useState([]);
   }, [userMobile]);
 
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: async () => {
-          await AsyncStorage.removeItem('user');
-          navigation.replace('Login');
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to logout?')) {
+        AsyncStorage.removeItem('user').then(() => navigation.replace('Login'));
+      }
+    } else {
+      Alert.alert('Logout', 'Are you sure you want to logout?', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            await AsyncStorage.removeItem('user');
+            navigation.replace('Login');
+          },
         },
-      },
-    ]);
+      ]);
+    }
   };
 
   const handleProfileUpdate = (newFname, newLname) => {

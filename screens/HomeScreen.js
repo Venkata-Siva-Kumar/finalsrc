@@ -10,14 +10,18 @@ import {
   ScrollView,
   Modal,
   ActivityIndicator,
+  TextInput,
+  Dimensions,
 } from 'react-native';
 import axios from 'axios';
-import { TextInput } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { CartContext } from './CartContext';
 import { API_BASE_URL } from '../config';
 import { Ionicons } from '@expo/vector-icons';
 import { UserContext } from '../UserContext';
+import NetInfo from '@react-native-community/netinfo';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 export default function HomeScreen({ navigation, route }) {
   const [products, setProducts] = useState([]);
@@ -29,12 +33,38 @@ export default function HomeScreen({ navigation, route }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalProduct, setModalProduct] = useState(null);
   const [variantQuantities, setVariantQuantities] = useState({});
-
+  const [popupVariantQuantities, setPopupVariantQuantities] = useState({});
+  const [isConnected, setIsConnected] = useState(true);
   const { user } = useContext(UserContext);
   const loggedInUserId = user?.id;
   const productsCache = useRef({});
+  const [error, setError] = useState(null);
+  const [banners, setBanners] = useState([]);
+  const [bannerIndex, setBannerIndex] = useState(0);
+  const bannerFlatListRef = useRef(null);
+  const bannerTimer = useRef(null);
+  const [isBannerPaused, setIsBannerPaused] = useState(false);
 
-  // Add this function inside your HomeScreen component
+  // Debounce search
+  const searchTimeout = useRef();
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsConnected(state.isConnected);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Show no internet message if offline
+  if (!isConnected) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Ionicons name="wifi" size={60} color="#ccc" />
+        <Text style={{ color: 'red', fontSize: 18, marginTop: 10 }}>No Internet Connection</Text>
+      </View>
+    );
+  }
+
   const syncVariantQuantitiesFromCart = () => {
     const qtyObj = {};
     cart.forEach((item) => {
@@ -43,61 +73,125 @@ export default function HomeScreen({ navigation, route }) {
     setVariantQuantities(qtyObj);
   };
 
-  const fetchCategories = () => {
-    axios
-      .get(`${API_BASE_URL}/categories`)
-      .then((res) => setCategories(res.data))
-      .catch(() => Alert.alert('Error', 'Failed to load categories'));
+  // Fetch categories with caching
+  const fetchCategories = async () => {
+    try {
+      const cached = await AsyncStorage.getItem('categories');
+      if (cached) setCategories(JSON.parse(cached));
+      const res = await axios.get(`${API_BASE_URL}/categories`);
+      setCategories(res.data);
+      AsyncStorage.setItem('categories', JSON.stringify(res.data));
+    } catch {
+      Alert.alert('Error', 'Failed to load categories');
+    }
   };
 
- const fetchProducts = () => {
-  let url;
-  setLoading(true);
-  if (searchQuery.trim() !== '') {
-    url = `${API_BASE_URL}/products?search=${encodeURIComponent(searchQuery.trim())}`;
-    axios
-      .get(url)
-      .then((res) => {
-        setProducts(res.data.filter((p) => p.status === 'enabled'));
-      })
-      .catch(() => {
-        Alert.alert('Error', 'Failed to load products');
-      })
-      .finally(() => setLoading(false));
-  } else if (selectedCategoryId) {
-    url = `${API_BASE_URL}/products?category_id=${selectedCategoryId}`;
-    axios
-      .get(url)
-      .then((res) => {
-        const filtered = res.data.filter((p) => p.status === 'enabled');
-        setProducts(filtered);
-      })
-      .catch(() => {
-        Alert.alert('Error', 'Failed to load products');
-      })
-      .finally(() => setLoading(false));
-  } else {
-    setProducts([]);
-    setLoading(false);
-  }
-};
+  // Fetch products with caching
+  const fetchProducts = async () => {
+    let url;
+    setLoading(true);
+    setError(null);
+    try {
+      let cacheKey = '';
+      if (searchQuery.trim() !== '') {
+        url = `${API_BASE_URL}/products?search=${encodeURIComponent(searchQuery.trim())}`;
+        cacheKey = `products_search_${searchQuery.trim()}`;
+      } else if (selectedCategoryId) {
+        url = `${API_BASE_URL}/products?category_id=${selectedCategoryId}`;
+        cacheKey = `products_cat_${selectedCategoryId}`;
+      }
+
+      // 1. Show cached data instantly
+      if (cacheKey) {
+        const cached = await AsyncStorage.getItem(cacheKey);
+        if (cached) setProducts(JSON.parse(cached));
+      }
+
+      // 2. Fetch from server and update UI/cache
+      if (url) {
+        const res = await axios.get(url);
+        const enabledProducts = res.data.filter((p) => p.status === 'enabled');
+        setProducts(enabledProducts);
+        AsyncStorage.setItem(cacheKey, JSON.stringify(enabledProducts));
+
+        // Remove cart items not in enabled products
+        if (enabledProducts.length > 0 && cart.length > 0) {
+          const enabledProductIds = new Set(enabledProducts.map(p => p.id));
+          const filteredCart = cart.filter(item => enabledProductIds.has(item.product_id));
+          if (filteredCart.length !== cart.length) {
+            setCart(filteredCart);
+          }
+        }
+      } else {
+        setProducts([]);
+      }
+    } catch {
+      setError('Failed to load products');
+      Alert.alert('Error', 'Failed to load products');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Debounced search
+  useEffect(() => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => {
+      fetchProducts();
+    }, 350);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, selectedCategoryId]);
 
   useFocusEffect(
-  React.useCallback(() => {
-    if (!cartLoaded) return; // Wait for cart to load!
-    // Clear the products cache so products are always fresh
-    productsCache.current = {};
-    fetchCategories();
-    fetchProducts();
-    // Sync quantities with cart
-    const qtyObj = {};
-    cart.forEach((item) => {
-      qtyObj[item.variant_id] = item.quantity;
-    });
-    setVariantQuantities(qtyObj);
-  }, [selectedCategoryId, searchQuery, cartLoaded, cart])
-);
+    React.useCallback(() => {
+      if (!cartLoaded) return;
+      productsCache.current = {};
+      fetchCategories();
+      
+      syncVariantQuantitiesFromCart();
+    }, [selectedCategoryId, cartLoaded])
+  );
 
+  useFocusEffect(
+    React.useCallback(() => {
+      if (cartLoaded) {
+        syncVariantQuantitiesFromCart();
+      }
+    }, [cart, cartLoaded])
+  );
+
+  // Fetch banners on focus (only active banners)
+  useFocusEffect(
+    React.useCallback(() => {
+      axios.get(`${API_BASE_URL}/banner`)
+        .then(res => setBanners(Array.isArray(res.data) ? res.data.filter(b => b.active && b.image_url) : []))
+        .catch(() => setBanners([]));
+      setBannerIndex(0);
+      return () => {
+        if (bannerTimer.current) clearInterval(bannerTimer.current);
+      };
+    }, [])
+  );
+
+  // Auto-slide banners, pause if isBannerPaused is true
+  useEffect(() => {
+    if (banners.length > 1 && !isBannerPaused) {
+      bannerTimer.current = setInterval(() => {
+        setBannerIndex(prev => {
+          const next = (prev + 1) % banners.length;
+          if (bannerFlatListRef.current) {
+            bannerFlatListRef.current.scrollToIndex({ index: next, animated: true });
+          }
+          return next;
+        });
+      }, 3000);
+      return () => clearInterval(bannerTimer.current);
+    } else {
+      if (bannerTimer.current) clearInterval(bannerTimer.current);
+    }
+  }, [banners, isBannerPaused]);
+
+  
   // Add/update a variant to cart and sync with backend
   const handleAddVariantToCart = (product, variant, quantity) => {
     setCart(prevCart => {
@@ -137,7 +231,7 @@ export default function HomeScreen({ navigation, route }) {
     }
   };
 
-  // Open modal and initialize variantQuantities from cart for this product
+  // Open modal and initialize popupVariantQuantities from cart for this product
   const openVariantModal = (product) => {
     setModalProduct(product);
     const qtyObj = {};
@@ -147,7 +241,7 @@ export default function HomeScreen({ navigation, route }) {
       );
       qtyObj[variant.id] = inCart ? inCart.quantity : 0;
     });
-    setVariantQuantities(qtyObj);
+    setPopupVariantQuantities(qtyObj);
     setModalVisible(true);
   };
 
@@ -389,7 +483,7 @@ export default function HomeScreen({ navigation, route }) {
                 {/* Make variants scrollable if too many */}
                 <ScrollView style={{ maxHeight: 300 }} contentContainerStyle={{ paddingBottom: 12 }}>
                   {modalProduct?.variants?.map((v, idx) => {
-                    const qty = variantQuantities[v.id] || 0;
+                    const qty = popupVariantQuantities[v.id] || 0;
                     return (
                       <View key={v.id} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
                         <Text style={{ flex: 2 }}>{v.quantity_value}</Text>
@@ -403,10 +497,10 @@ export default function HomeScreen({ navigation, route }) {
                               onPress={() => {
                                 if (qty > 1) {
                                   const nextQty = qty - 1;
-                                  setVariantQuantities(prev => ({ ...prev, [v.id]: nextQty }));
+                                  setPopupVariantQuantities(prev => ({ ...prev, [v.id]: nextQty }));
                                   handleAddVariantToCart(modalProduct, v, nextQty);
                                 } else if (qty === 1) {
-                                  setVariantQuantities(prev => ({ ...prev, [v.id]: 0 }));
+                                  setPopupVariantQuantities(prev => ({ ...prev, [v.id]: 0 }));
                                   setCart(prevCart =>
                                     prevCart.filter(
                                       item => !(item.product_id === modalProduct.id && item.variant_id === v.id)
@@ -440,7 +534,7 @@ export default function HomeScreen({ navigation, route }) {
                               onPress={() => {
                                 if (qty < 5) {
                                   const nextQty = qty + 1;
-                                  setVariantQuantities(prev => ({ ...prev, [v.id]: nextQty }));
+                                  setPopupVariantQuantities(prev => ({ ...prev, [v.id]: nextQty }));
                                   handleAddVariantToCart(modalProduct, v, nextQty);
                                 }
                               }}
@@ -462,7 +556,7 @@ export default function HomeScreen({ navigation, route }) {
                           <TouchableOpacity
                             style={[styles.addButton, { flex: 1 }]}
                             onPress={() => {
-                              setVariantQuantities(prev => ({ ...prev, [v.id]: 1 }));
+                              setPopupVariantQuantities(prev => ({ ...prev, [v.id]: 1 }));
                               handleAddVariantToCart(modalProduct, v, 1);
                             }}
                           >
@@ -518,6 +612,79 @@ export default function HomeScreen({ navigation, route }) {
         <Ionicons name="search" size={20} color="#888" style={{ marginLeft: 8 }} />
       </View>
 
+      {/* Sliding Banner */}
+      {banners.length > 0 && (
+        <View
+          style={{
+            marginHorizontal: 12,
+            marginBottom: 8,
+            borderRadius: 10,
+            overflow: 'hidden',
+            backgroundColor: '#fffbe6',
+            borderWidth: 1,
+            borderColor: '#ffe066',
+            elevation: 2,
+            // Set height to 16:9 aspect ratio based on screen width
+            height: ((Dimensions.get('window').width - 24) * 7) / 16,
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <FlatList
+            ref={bannerFlatListRef}
+            data={banners}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(_, idx) => idx.toString()}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                activeOpacity={1}
+                onLongPress={() => setIsBannerPaused(true)}
+                onPressOut={() => setIsBannerPaused(false)}
+                delayLongPress={200}
+              >
+                <Image
+                  source={{ uri: item.image_url }}
+                  style={{
+                    width: Dimensions.get('window').width - 24,
+                    height: ((Dimensions.get('window').width - 24) * 7) / 16, // 16:9 aspect ratio
+                    resizeMode: 'cover',
+                  }}
+                />
+              </TouchableOpacity>
+            )}
+            onMomentumScrollEnd={e => {
+              const newIndex = Math.round(
+                e.nativeEvent.contentOffset.x / (Dimensions.get('window').width - 24)
+              );
+              setBannerIndex(newIndex);
+            }}
+            initialScrollIndex={0}
+            getItemLayout={(_, index) => ({
+              length: Dimensions.get('window').width - 24,
+              offset: (Dimensions.get('window').width - 24) * index,
+              index,
+            })}
+          />
+          {/* Dots indicator */}
+          <View style={{ flexDirection: 'row', position: 'absolute', bottom: 10, alignSelf: 'center' }}>
+            {banners.map((_, idx) => (
+              <View
+                key={idx}
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: bannerIndex === idx ? '#007bff' : '#ccc',
+                  marginHorizontal: 3,
+                }}
+              />
+            ))}
+          </View>
+        </View>
+      )}
+
       {/* Main content: Sidebar + Product List */}
       <View style={{ flex: 1, flexDirection: 'row' }}>
         {/* Sidebar */}
@@ -569,6 +736,8 @@ export default function HomeScreen({ navigation, route }) {
         <View style={{ flex: 1, padding: 8 }}>
           {loading ? (
             <Text style={{ textAlign: 'center', marginTop: 30 }}>Loading...</Text>
+          ) : error ? (
+            <Text style={{ textAlign: 'center', marginTop: 30, color: 'red' }}>{error}</Text>
           ) : (
             <FlatList
               data={products}

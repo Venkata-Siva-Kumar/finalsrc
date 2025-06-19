@@ -14,16 +14,17 @@ import PaymentScreen from "./screens/PaymentScreen";
 // import OTPLoginScreen from "./screens/OTPLoginScreen";
 import AccountScreen from "./screens/AccountScreen";
 import { CartProvider, CartContext } from "./screens/CartContext";
-import AdminHomeScreen, { EarningsTab } from './screens/Admin_Home_Screen'; // <-- fixed import
+import AdminHomeScreen, { EarningsTab } from './screens/Admin_Home_Screen';
 import AdminLoginScreen from './screens/AdminLoginScreen';
 import AdminOrdersScreen from './screens/AdminOrdersScreen';
 import OrdersScreen from './screens/OrdersScreen';
 import ForgotPasswordScreen from "./screens/ForgotPasswordScreen";
 import { UserProvider } from './UserContext';
 import ContactCenterScreen  from "./screens/ContactCenterScreen";
-import AppHeaderIcon from './screens/AppHeaderIcon'; // Adjust the path if needed
+import AppHeaderIcon from './screens/AppHeaderIcon';
 import OrderDetailsScreen from './screens/OrderDetailsScreen';
-import OrderDetailsUserScreen from './screens/OrderDetailsUserScreen'; // Adjust the path if needed
+import OrderDetailsUserScreen from './screens/OrderDetailsUserScreen';
+import BannerTab from './screens/BannerTab'; // <-- Import your BannerTab
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -33,7 +34,7 @@ function MainTabs({route}) {
   const { cart } = useContext(CartContext);
   const cartCount = cart.length;
   return (
-    <Tab.Navigator options={{  }}
+    <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
@@ -41,8 +42,8 @@ function MainTabs({route}) {
             iconName = focused ? "home" : "home-outline";
           } else if (route.name === "Cart") {
             iconName = focused ? "cart" : "cart-outline";
-          }else if (route.name === "Account") {
-            iconName = focused ? "person" : "person-outline"; // <-- Add this block
+          } else if (route.name === "Account") {
+            iconName = focused ? "person" : "person-outline";
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
@@ -65,6 +66,8 @@ function AdminTabs() {
           let iconName;
           if (route.name === "AdminHome") {
             iconName = focused ? "home" : "home-outline";
+          } else if (route.name === "Banner") {
+            iconName = focused ? "image" : "image-outline";
           } else if (route.name === "Earnings") {
             iconName = focused ? "cash" : "cash-outline";
           } else if (route.name === "AdminOrders") {
@@ -80,6 +83,11 @@ function AdminTabs() {
         name="AdminHome"
         component={AdminHomeScreen}
         options={{ title: "Admin", headerTitleAlign: 'center',headerTitleStyle: { fontWeight: 'bold', fontSize: 25 },headerLeft: () => <AppHeaderIcon />,}}
+      />
+      <Tab.Screen
+        name="Banner"
+        component={BannerTab}
+        options={{ title: "Banner", headerTitleAlign: 'center', headerTitleStyle: { fontWeight: 'bold', fontSize: 25 }, tabBarLabel: "Banner" }}
       />
       <Tab.Screen
         name="Earnings"
