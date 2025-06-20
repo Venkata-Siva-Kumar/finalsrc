@@ -1,3 +1,12 @@
+function pad(str, len) {
+  str = String(str);
+  return str + ' '.repeat(Math.max(0, len - str.length));
+}
+function padLeft(str, len) {
+  str = String(str);
+  return ' '.repeat(Math.max(0, len - str.length)) + str;
+}
+
 const getPrintHtml = (order, productMap) => {
   let totalSavings = 0;
   const pad = (str, len) => (str + ' '.repeat(len)).slice(0, len);
@@ -9,63 +18,64 @@ const getPrintHtml = (order, productMap) => {
 </div>
 <b style="display:block; font-size: 20px; margin-left:55px; margin-top:-20px;">Sree Sambasiva</b>
 <b style="display:block; font-size: 20px; margin-left:60px; margin-top:-10px; margin-bottom: -10px;">General Store</b>
--------------------------------------------------
+---------------------------------------------------
 
           GSTIN: 37APAPC5371F1Z7
 
--------------------------------------------------
+---------------------------------------------------
   5-1-64 Sumitra Nagar,Beside RTC Bus Stand,
       Lakshidevamma Hospital Street,
       Badvel,Andhra Pradesh - 516227
           Phone: +91-94409 47676
--------------------------------------------------
+---------------------------------------------------
               <b>Order Invoice</b>
 
 <b>Order ID</b> : ${order.orderId}
 <b>Date</b>     : ${order.orderDate ? new Date(order.orderDate).toLocaleString() : 'N/A'}
--------------------------------------------------
-<b>${pad('Items', 16)}${pad('Qty', 6)}${pad('MRP', 10)}${pad('Rate', 10)}${pad('Value', 12)}</b>
--------------------------------------------------\n`;
+---------------------------------------------------
+<b>${pad('Items', 16)}${padLeft('Qty', 4)}${padLeft('MRP', 8)}${padLeft('Rate', 10)}${padLeft('Value', 11)}</b>
+---------------------------------------------------
+`;
 
-if (order.items && order.items.length > 0) {
-  order.items.forEach(prod => {
-    const price = Number(prod.price);
-    const mrp = Number(prod.mrp || price); // fallback to price if no mrp
-    const variant = prod.quantity_value ? `(${prod.quantity_value})` : '';
-    const name = pad(
-      (prod.name || productMap[prod.product_id || prod.productId || prod.id] || 'Unknown') + variant,
-      16
-    );
-    const qty = pad(prod.quantity.toString(), 6);
-    const mrpStr = pad('₹' + mrp.toFixed(2), 10);
-    const rate = pad('₹' + price.toFixed(2), 10);
-    const value = pad('₹' + (price * prod.quantity).toFixed(2), 12);
-    const saving = Math.max(0, (mrp - price) * prod.quantity);
-    totalSavings += saving;
-    const saveStr = pad('₹' + saving.toFixed(2), 10);
-    html += `${name}${qty}${mrpStr}${rate}${value}\n`;
-  });
-} else {
-  html += 'No products in this order.\n';
-}
+  if (order.items && order.items.length > 0) {
+    order.items.forEach(prod => {
+      const price = Number(prod.price);
+      const mrp = Number(prod.mrp || price); // fallback to price if no mrp
+      const variant = prod.quantity_value ? `(${prod.quantity_value})` : '';
+      const name = pad(
+        (prod.name || productMap[prod.product_id || prod.productId || prod.id] || 'Unknown') + variant,
+        16
+      );
+      const qty = padLeft(prod.quantity.toString(), 3);
+      const mrpStr = padLeft('₹' + mrp.toFixed(2), 10);
+      const rate = padLeft('₹' + price.toFixed(2), 10);
+      const value = padLeft('₹' + (price * prod.quantity).toFixed(2), 11);
+      const saving = Math.max(0, (mrp - price) * prod.quantity);
+      totalSavings += saving;
+      const saveStr = padLeft('₹' + saving.toFixed(2), 10);
+      html += `${name}${qty}${mrpStr}${rate}${value}\n`;
+    });
+  } else {
+    html += 'No products in this order.\n';
+  }
 
-html += `-------------------------------------------------
+  html += `---------------------------------------------------
 <b>Items</b>: ${order.items ? order.items.length : 0}      <b>Qty</b>: ${order.items ? order.items.reduce((sum, item) => sum + Number(item.quantity), 0) : 0}          <b>Total</b>  : ₹${Number(order.totalAmount).toFixed(2)}
 
--------------------------------------------------
+---------------------------------------------------
 <b>Address:</b>
 ${order.deliveryAddress && typeof order.deliveryAddress === 'object' && !Array.isArray(order.deliveryAddress)? `
   ${order.deliveryAddress.name || ''},<b>${order.deliveryAddress.mobile || ''}</b>,
   ${order.deliveryAddress.address || ''},${order.deliveryAddress.locality || ''}
   ${order.deliveryAddress.city || ''},${order.deliveryAddress.state || ''},
   ${order.deliveryAddress.pincode || ''},${order.deliveryAddress.landmark || ''}`: 'No delivery address provided.'}
--------------------------------------------------
+---------------------------------------------------
 <div style="font-size: 15px;margin-left:30px;"><b>Total Amount</b>: ₹${Number(order.totalAmount).toFixed(2)}</div>
-<div style="font-size: 15px;margin-left:10px; ">* *<b><i>Saved</i> Rs.${totalSavings.toFixed(2)} <i>On MRP</i> </b>* *</div>
+<div style="font-size: 15px;margin-left:10px; ">* *<b> Saved Rs.${totalSavings.toFixed(2)} <i>On MRP</i> </b>* *</div>
 <div style="font-size: 15px;font-style: italic;margin-left:40px;"><strong>Payment Type: Cash</strong></div>
     This is computer generated invoice.
       <b>Thank you for shopping with us!</b>
--------------------------------------------------
+---------------------------------------------------
 </pre>
   `;
 
