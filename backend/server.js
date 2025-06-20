@@ -20,8 +20,6 @@ const db = mysql.createConnection({
 });
 
 
-
-
 db.connect(err => {
   if (err) {
     console.error('❌ Database connection failed:', err);
@@ -313,6 +311,7 @@ app.get('/orders', (req, res) => {
          p.name AS product_name, 
          v.quantity_value, 
          v.price AS variant_price,
+         v.mrp AS variant_mrp,
          img.image_data, img.mime_type
        FROM order_items oi
        JOIN products p ON oi.productId = p.id
@@ -330,6 +329,7 @@ app.get('/orders', (req, res) => {
             name: item.product_name,
             quantity: item.quantity,
             price: item.variant_price,
+            mrp: item.variant_mrp,
             quantity_value: item.quantity_value,
             product_id: item.productId,
             variant_id: item.variantId,

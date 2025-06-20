@@ -11,6 +11,9 @@ import {
   Animated,
   Keyboard,
   TouchableWithoutFeedback,  
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform, 
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import axios from 'axios';
@@ -86,6 +89,9 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
+    
+      <KeyboardAvoidingView style={{ flex: 1 }}  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}  keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}  >
+        <ScrollView>
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
     <View style={styles.container}>
        <ExpoImage
@@ -170,6 +176,9 @@ export default function LoginScreen({ navigation }) {
 
     </View>
     </TouchableWithoutFeedback>
+    </ScrollView>
+    </KeyboardAvoidingView>
+    
   );
 }
 
@@ -187,9 +196,9 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
     alignContent: 'center',
     alignSelf: 'center',
-    marginBottom: 70,
+    marginBottom: 50,
     borderRadius: 40,
-    marginTop: -200,
+    marginTop: 100,
     resizeMode: 'contain',
 
   },
