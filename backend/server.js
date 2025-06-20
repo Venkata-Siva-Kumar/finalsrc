@@ -973,5 +973,132 @@ app.delete('/banner/:id', (req, res) => {
 });
 
 
+// --- Offer Endpoints ---
+
+function toDDMMYYYY(dateStr) {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const dd = parts[0].padStart(2, '0');
+  const mm = parts[1].padStart(2, '0');
+  const yyyy = parts[2];
+  return `${dd}-${mm}-${yyyy}`;
+}
+
+// Add Offer
+app.post('/api/offers', (req, res) => {
+  let { coupon_code, start_date, end_date, min_cart_value, max_cart_value, discount_percent, max_discount } = req.body;
+  start_date = toDDMMYYYY(start_date);
+  end_date = toDDMMYYYY(end_date);
+  db.query(
+    'INSERT INTO offers (coupon_code, start_date, end_date, min_cart_value, max_cart_value, discount_percent, max_discount) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [coupon_code, start_date, end_date, min_cart_value, max_cart_value, discount_percent, max_discount],
+    (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ success: true });
+    }
+  );
+});
+
+// Update Offer
+app.put('/api/offers/:id', (req, res) => {
+  let { coupon_code, start_date, end_date, min_cart_value, max_cart_value, discount_percent, max_discount } = req.body;
+  start_date = toDDMMYYYY(start_date);
+  end_date = toDDMMYYYY(end_date);
+  db.query(
+    `UPDATE offers SET coupon_code=?, start_date=?, end_date=?, min_cart_value=?, max_cart_value=?, discount_percent=?, max_discount=? WHERE id=?`,
+    [coupon_code, start_date, end_date, min_cart_value, max_cart_value, discount_percent, max_discount, req.params.id],
+    (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ success: true });
+    }
+  );
+});
+
+// Get All Offers
+app.get('/api/offers', (req, res) => {
+  db.query('SELECT * FROM offers', (err, offers) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(offers);
+  });
+});
+
+// Delete Offer
+app.delete('/api/offers/:id', (req, res) => {
+  db.query('DELETE FROM offers WHERE id=?', [req.params.id], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ success: true });
+  });
+});
+
+// Coupon validation: get today's date in dd-mm-yyyy
+
+
+// Helper to get today's date in IST as dd-mm-yyyy
+function getTodayIST_ddmmyyyy() {
+  const now = new Date();
+  // Convert to IST (UTC+5:30)
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const istNow = new Date(now.getTime() + istOffset - (now.getTimezoneOffset() * 60000));
+  const dd = String(istNow.getDate()).padStart(2, '0');
+  const mm = String(istNow.getMonth() + 1).padStart(2, '0');
+  const yyyy = istNow.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+}
+
+// Helper to convert dd-mm-yyyy to JS Date (midnight IST)
+function parseDDMMYYYYtoDate(dateStr) {
+  if (!dateStr) return null;
+  const [dd, mm, yyyy] = dateStr.split('-');
+  // Date.UTC uses month 0-based
+  return new Date(Date.UTC(Number(yyyy), Number(mm) - 1, Number(dd), 0, 0, 0));
+}
+
+app.post('/api/apply-coupon', (req, res) => {
+  let { coupon_code, cart_value } = req.body;
+  coupon_code = (coupon_code || '').toUpperCase();
+
+  const todayStr = getTodayIST_ddmmyyyy();
+  const todayDate = parseDDMMYYYYtoDate(todayStr);
+
+  db.query(
+    `SELECT * FROM offers
+     WHERE UPPER(coupon_code) = ?
+     AND min_cart_value <= ? AND max_cart_value >= ?`,
+    [coupon_code, cart_value, cart_value],
+    (err, rows) => {
+      if (err) {
+        console.error('Coupon DB error:', err);
+        return res.status(500).json({ valid: false, message: 'Server error' });
+      }
+      if (!rows.length) {
+        return res.json({ valid: false, message: 'Invalid or expired coupon for this cart value.' });
+      }
+
+      // Now check date validity in JS
+      const offer = rows[0];
+      const startDate = parseDDMMYYYYtoDate(offer.start_date);
+      const endDate = parseDDMMYYYYtoDate(offer.end_date);
+
+      if (!startDate || !endDate || !todayDate ||
+          todayDate < startDate || todayDate > endDate) {
+        return res.json({ valid: false, message: 'Invalid or expired coupon for this date.' });
+      }
+
+      let discount = Number(cart_value) * Number(offer.discount_percent) / 100;
+if (offer.max_discount !== null && offer.max_discount !== undefined && discount > Number(offer.max_discount)) {
+  discount = Number(offer.max_discount);
+}
+const final_value = Number(cart_value) - discount;
+res.json({
+  valid: true,
+  discount: discount.toFixed(2),
+  final_value: final_value.toFixed(2),
+  discount_percent: offer.discount_percent
+});
+    }
+  );
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running on http://0.0.0.0:${PORT}`));

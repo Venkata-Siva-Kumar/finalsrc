@@ -25,7 +25,7 @@ import AppHeaderIcon from './screens/AppHeaderIcon';
 import OrderDetailsScreen from './screens/OrderDetailsScreen';
 import OrderDetailsUserScreen from './screens/OrderDetailsUserScreen';
 import BannerTab from './screens/BannerTab'; // <-- Import your BannerTab
-
+import AdminOfferScreen from './screens/AdminOfferScreen';  
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
@@ -66,6 +66,8 @@ function AdminTabs() {
           let iconName;
           if (route.name === "AdminHome") {
             iconName = focused ? "home" : "home-outline";
+          } else if (route.name === "Offers") {
+            iconName = focused ? "pricetag" : "pricetag-outline";
           } else if (route.name === "Banner") {
             iconName = focused ? "image" : "image-outline";
           } else if (route.name === "Earnings") {
@@ -83,6 +85,11 @@ function AdminTabs() {
         name="AdminHome"
         component={AdminHomeScreen}
         options={{ title: "Admin", headerTitleAlign: 'center',headerTitleStyle: { fontWeight: 'bold', fontSize: 25 },headerLeft: () => <AppHeaderIcon />,}}
+      />
+      <Tab.Screen
+        name="Offers"
+        component={AdminOfferScreen}
+        options={{ title: "Offers", headerTitleAlign: 'center', headerTitleStyle: { fontWeight: 'bold', fontSize: 25 }, tabBarLabel: "Offers" }}
       />
       <Tab.Screen
         name="Banner"

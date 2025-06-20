@@ -22,17 +22,24 @@ export default function CartScreen({ navigation, route }) {
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [addressForm, setAddressForm] = useState({
     name: '', addr_mobile: '', pincode: '', locality: '',
-    address: '', city: '', state: '', landmark:'',
+    address: '', city: '', state: '', landmark: '',
   });
   const [showSelectAddressModal, setShowSelectAddressModal] = useState(false);
   const [selectedAddressIndex, setSelectedAddressIndex] = useState(null);
   const [editingIndex, setEditingIndex] = useState(null);
-  const [pincode, setPincode] = useState('');
-  const [location, setLocation] = useState('');
   const [loading, setLoading] = useState(false);
-  const [pincodeValid, setPincodeValid] = useState(false);
   const [variantQuantities, setVariantQuantities] = useState({});
-  
+
+  // Coupon state
+  const [couponCode, setCouponCode] = useState('');
+  const [discount, setDiscount] = useState(0);
+  const [finalAmount, setFinalAmount] = useState(0);
+  const [couponMessage, setCouponMessage] = useState('');
+  const [isApplying, setIsApplying] = useState(false);
+
+  // Delivery charge (always free for now)
+  const deliveryCharge = 0;
+
   // Fetch cart from backend every time screen is focused
   useFocusEffect(
     React.useCallback(() => {
@@ -64,19 +71,75 @@ export default function CartScreen({ navigation, route }) {
     }, [route.params?.orderedProductIds, cart])
   );
 
- const fetchAddresses = () => {
-  if (!loggedInMobile) return;
-  fetch(`${API_BASE_URL}/addresses?user_id=${loggedInMobile}`)
-    .then(res => res.json())
-    .then(data => setAddresses(Array.isArray(data) ? data : []))
-    .catch(() => setAddresses([]));
-};
+  const fetchAddresses = () => {
+    if (!loggedInMobile) return;
+    fetch(`${API_BASE_URL}/addresses?user_id=${loggedInMobile}`)
+      .then(res => res.json())
+      .then(data => setAddresses(Array.isArray(data) ? data : []))
+      .catch(() => setAddresses([]));
+  };
+
+  useEffect(() => {
+    fetchAddresses();
+  }, [loggedInMobile]);
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalAmount = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
+  // Coupon logic
+  useEffect(() => {
+    setFinalAmount(totalAmount - discount);
+  }, [totalAmount, discount]);
+
+  // Remove coupon if cart is empty or totalAmount is 0
+  useEffect(() => {
+    if (cart.length === 0 || totalAmount < 1) {
+      setCouponCode('');
+      setDiscount(0);
+      setCouponMessage('');
+    }
+  }, [cart, totalAmount]);
+
+  // Accept only capital letters for coupon code
+  const handleCouponCodeInput = (text) => {
+    setCouponCode(text.replace(/[^A-Z]/g, '').toUpperCase());
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode) {
+      setCouponMessage('Please enter a coupon code');
+      return;
+    }
+    setIsApplying(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/apply-coupon`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coupon_code: couponCode, cart_value: Number(totalAmount) }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setDiscount(Number(data.discount));
+        setFinalAmount(Number(data.final_value));
+        setCouponMessage(`Coupon applied! You saved ₹${data.discount}`);
+      } else {
+        setDiscount(0);
+        setFinalAmount(totalAmount);
+        setCouponMessage(data.message || 'Invalid coupon');
+      }
+    } catch (err) {
+      setCouponMessage('Error applying coupon');
+    }
+    setIsApplying(false);
+  };
+
   // Update cart quantity and sync to backend
   const handleQuantityChange = (productId, variantId, newQuantity) => {
+    // Reset coupon and discount when cart is updated
+    setCouponCode('');
+    setDiscount(0);
+    setCouponMessage('');
+
     if (newQuantity > 5) {
       Alert.alert('Limit Reached', 'You can only add up to 5 units of each product.');
       return;
@@ -109,6 +172,11 @@ export default function CartScreen({ navigation, route }) {
 
   // Remove item from cart and sync to backend
   const handleRemove = (productId, variantId) => {
+    // Reset coupon and discount when cart is updated
+    setCouponCode('');
+    setDiscount(0);
+    setCouponMessage('');
+
     const updatedCart = cart.filter(
       item => !(item.product_id === productId && item.variant_id === variantId)
     );
@@ -128,76 +196,25 @@ export default function CartScreen({ navigation, route }) {
     }
   };
 
-  // Address helpers
-  const [allowedPincodes, setAllowedPincodes] = useState([]);
-
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/pincodes`)
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) setAllowedPincodes(data);
-      })
-      .catch(() => setAllowedPincodes([]));
-  }, []);
-
-  const validatePincode = async () => {
-    const isValidFormat = /^\d{6}$/.test(pincode);
-    const isAllowed = allowedPincodes.includes(pincode);
-
-    if (!isValidFormat) {
-      Alert.alert('Invalid Pincode', 'Please enter a 6-digit valid pincode.');
-      setLocation('');
-      setPincodeValid(false);
-      return;
-    }
-
-    if (!isAllowed) {
-      Alert.alert('Delivery Unavailable', `Sorry, we do not deliver to your pincode ${pincode} at the moment.`);
-      setLocation('');
-      setPincodeValid(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
-      const data = await response.json();
-      const postOffice = data[0]?.PostOffice?.[0];
-      if (postOffice) {
-        setLocation(`${postOffice.Name}, ${postOffice.District}`);
-        setPincodeValid(true);
-      } else {
-        Alert.alert('Pincode Not Found', 'No location found for this pincode.');
-        setLocation('');
-        setPincodeValid(false);
-      }
-    } catch (error) {
-      setLocation('');
-      setPincodeValid(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const addAddress = async () => {
     const { name, addr_mobile, pincode, locality, address, city, state, landmark } = addressForm;
-  const requiredFields = { name, addr_mobile, pincode, address, locality };
-  let newTouched = {};
-  let hasError = false;
+    const requiredFields = { name, addr_mobile, pincode, address, locality };
+    let newTouched = {};
+    let hasError = false;
 
-  Object.entries(requiredFields).forEach(([key, value]) => {
-    if (!value.trim()) {
-      newTouched[key] = true;
-      hasError = true;
+    Object.entries(requiredFields).forEach(([key, value]) => {
+      if (!value.trim()) {
+        newTouched[key] = true;
+        hasError = true;
+      }
+    });
+
+    setAddressTouched(newTouched);
+
+    if (hasError) {
+      Alert.alert('Missing Fields', 'Please fill in all required fields (Name, Mobile, Pincode, Address, Locality).');
+      return;
     }
-  });
-
-  setAddressTouched(newTouched);
-
-  if (hasError) {
-    Alert.alert('Missing Fields', 'Please fill in all required fields (Name, Mobile, Pincode, Address, Locality).');
-    return;
-  }
 
     try {
       let response, savedAddress;
@@ -250,7 +267,7 @@ export default function CartScreen({ navigation, route }) {
       Alert.alert('Error', error.message || 'Failed to save address to database.');
       return;
     }
-    
+
     setAddressForm({
       name: '', addr_mobile: '', pincode: '', locality: '',
       address: '', city: '', state: '', landmark: '',
@@ -323,23 +340,15 @@ export default function CartScreen({ navigation, route }) {
       Alert.alert('No Address Selected', 'Please select one address.');
       return;
     }
-    const selected = addresses[selectedAddressIndex];
-    if (!allowedPincodes.includes(selected.pincode)) {
-      Alert.alert(
-        'Not Deliverable',
-        `Sorry, we are unable to deliver to this pincode ${selected.pincode}. Please select a different address.`
-      );
-      return;
-    }
     setShowSelectAddressModal(false);
   }
 
-  const proceedToPayment = () => {
+  const proceedToPayment = async () => {
     if (cart.length === 0) {
       Alert.alert('Cart Empty', 'Please add items to your cart before proceeding.');
       return;
     }
-    if (totalAmount < 500) {
+    if (finalAmount < 500) {
       Alert.alert('Minimum Order', 'The minimum cart value should be ₹500.');
       return;
     }
@@ -349,11 +358,28 @@ export default function CartScreen({ navigation, route }) {
     }
     const selectedAddress = addresses[selectedAddressIndex];
     const cleanMobile = (loggedInMobile || '').replace(/^\+91/, '').replace(/\D/g, '').slice(-10);
+
+    // --- Pincode validation using /pincodes endpoint ---
+    const pincode = selectedAddress.pincode;
+    try {
+      const res = await fetch(`${API_BASE_URL}/pincodes`);
+      const validPincodes = await res.json();
+      if (!Array.isArray(validPincodes) || !validPincodes.includes(pincode)) {
+        Alert.alert('Delivery Not Available', `Sorry, we do not deliver to pincode ${pincode}.`);
+        return;
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Could not validate pincode. Please try again.');
+      return;
+    }
+
     navigation.navigate('Payment', {
       cart,
       userMobile: cleanMobile,
       selectedAddress,
-      totalAmount,
+      totalAmount: finalAmount,
+      originalAmount: totalAmount,
+      discount,
       user_id: loggedInUserId,
     });
   };
@@ -432,68 +458,142 @@ export default function CartScreen({ navigation, route }) {
     }
   };
 
+  // --- UI ---
   return (
     <View style={styles.container}>
-      <View style={styles.pincodeContainer}>
-        <TextInput
-          style={styles.pincodeInput}
-          placeholder="Enter Pincode"
-          placeholderTextColor="#888"
-          keyboardType="numeric"
-          maxLength={6}
-          value={pincode}
-          onChangeText={(text) => {
-            setPincode(text);
-            setPincodeValid(false);
-            setLocation('');
-          }}
-        />
-        <TouchableOpacity style={styles.checkButton} onPress={validatePincode}>
-          <Text style={styles.checkButtonText}>Check</Text>
-        </TouchableOpacity>
+      {/* Address Card at Top */}
+      <View style={styles.addressCard}>
+        {selectedAddressIndex !== null && addresses[selectedAddressIndex] ? (
+          <>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontWeight: 'bold' }}>
+                Deliver to: <Text style={{ color: '#222' }}>{addresses[selectedAddressIndex].name}</Text>
+                {addresses[selectedAddressIndex].pincode ? `, ${addresses[selectedAddressIndex].pincode}` : ''}
+                <Text style={styles.homeBadge}> HOME </Text>
+              </Text>
+              <Text style={{ color: '#555', marginTop: 2 }} numberOfLines={2} ellipsizeMode="tail">
+                {(() => {
+                  const addr = addresses[selectedAddressIndex];
+                  let fullAddress = '';
+                  try {
+                    fullAddress = (typeof addr.address === 'string'
+                      ? JSON.parse(addr.address).fullAddress
+                      : addr.address.fullAddress
+                    );
+                  } catch {
+                    fullAddress = addr.address || '';
+                  }
+                  return [
+                    fullAddress,
+                    addr.locality,
+                    addr.city,
+                    addr.state,
+                    addr.landmark
+                  ].filter(Boolean).join(', ');
+                })()}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => setShowSelectAddressModal(true)} style={styles.changeBtn}>
+              <Text style={{ color: '#007bff', fontWeight: 'bold' }}>Change</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <TouchableOpacity style={styles.selectAddressBtn} onPress={() => setShowSelectAddressModal(true)}>
+            <Text style={{ color: '#007bff', fontWeight: 'bold' }}>Select Delivery Address</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {loading && <ActivityIndicator size="small" color="#007bff" />}
-      {location ? <Text style={[styles.locationText, { color: 'green' }]}>Deliverable to: {location}</Text> : null}
-
-      {selectedAddressIndex !== null ? (
-        <View style={{ marginBottom: 10, backgroundColor: '#e6f7ff', padding: 12, borderRadius: 6 }}>
-          <Text style={{ fontWeight: 'bold' }}>Deliver To:</Text>
-          <Text style={{ fontSize: 14 }} numberOfLines={3} ellipsizeMode="tail">
-            {(() => {
-              const addr = addresses[selectedAddressIndex];
-              let fullAddress = '';
-              try {
-                fullAddress = (typeof addr.address === 'string'
-                  ? JSON.parse(addr.address).fullAddress
-                  : addr.address.fullAddress
-                );
-              } catch {
-                fullAddress = '';
-              }
-              // Combine all relevant fields into a single string
-              return [
-                addr.name,
-                addr.addr_mobile,
-                fullAddress,
-                addr.locality,
-                addr.city,
-                addr.state,
-                addr.pincode,
-                addr.landmark
-              ]
-              .filter(Boolean)
-              .join(', ');
-            })()}
+      {/* Coupon Section */}
+      <View style={{ marginVertical: 0, padding: 10, backgroundColor: "#f9f9f9", borderRadius: 8 }}>
+        
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <TextInput
+            style={{
+              flex: 1,
+              borderWidth: 1,
+              borderColor: "#ccc",
+              borderRadius: 5,
+              padding: 8,
+              marginRight: 8,
+              backgroundColor: "#fff",
+            }}
+            placeholder="Enter coupon code"
+            placeholderTextColor="#888"
+            value={couponCode}
+            onChangeText={handleCouponCodeInput}
+            autoCapitalize="characters"
+          />
+          <TouchableOpacity
+            style={{
+              backgroundColor: "#ff9500",
+              paddingVertical: 8,
+              paddingHorizontal: 16,
+              borderRadius: 5,
+            }}
+            onPress={handleApplyCoupon}
+            disabled={isApplying}
+          >
+            <Text style={{ color: "#fff", fontWeight: "bold" }}>
+              {isApplying ? "Applying..." : "Apply"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        {couponMessage ? (
+          <Text style={{ color: discount > 0 ? "green" : "red", marginTop: 6 }}>
+            {couponMessage}
           </Text>
-        </View>
-      ) : (
-        <View style={{ marginBottom: 10 }}>
-          <Text style={{ color: 'gray' }}>No delivery address selected</Text>
-        </View>
-      )}
+        ) : null}
+      </View>
 
-      {/* Select Address Modal */}
+      {/* Cart Items */}
+      <FlatList
+        data={cart}
+        keyExtractor={(item) => `${item.product_id}_${item.variant_id}`}
+        renderItem={renderItem}
+        ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20 }}>Your cart is empty.</Text>}
+      />
+
+      {/* Price Details Section */}
+      <View style={{
+        backgroundColor: "#fff",
+        borderRadius: 8,
+        marginTop: 5,
+        padding: 10,
+        paddingTop: 0,
+        elevation: 2,
+        shadowColor: "#000",
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+      }}>
+        <Text style={{ fontWeight: "bold", fontSize: 16, marginBottom: 7 }}>Price Details</Text>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 3 }}>
+          <Text>Price ({totalItems} item{totalItems > 1 ? "s" : ""})</Text>
+          <Text>₹{totalAmount.toFixed(2)}</Text>
+        </View>
+        {discount > 0 && (
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 3 }}>
+            <Text style={{ color: "green" }}>Discount</Text>
+            <Text style={{ color: "green" }}>- ₹{discount.toFixed(2)}</Text>
+          </View>
+        )}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
+          <Text>Delivery Charges</Text>
+          <Text style={{ color: "green" }}>FREE Delivery</Text>
+        </View>
+        <View style={{ borderTopWidth: 1, borderTopColor: "#eee", marginVertical: 8 }} />
+        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 0 }}>
+          <Text style={{ fontWeight: "bold" }}>Total Amount</Text>
+          <Text style={{ fontWeight: "bold" }}>₹{finalAmount.toFixed(2)}</Text>
+        </View>
+        {discount > 0 && (
+          <Text style={{ color: "green", marginTop: 3 }}>
+            You will save ₹{discount.toFixed(2)} on this order
+          </Text>
+        )}
+      </View>
+
+      {/* Address Selection Modal */}
       <Modal visible={showSelectAddressModal} animationType="slide" transparent={false}>
         <View style={{ flex: 1, padding: 20 }}>
           <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 20 }}>Select Delivery Address</Text>
@@ -518,53 +618,57 @@ export default function CartScreen({ navigation, route }) {
 
           <ScrollView>
             {addresses.map((addr, idx) => {
-              const isSelected = selectedAddressIndex === idx;
+              let fullAddress = '';
+              try {
+                fullAddress = (typeof addr.address === 'string'
+                  ? JSON.parse(addr.address).fullAddress
+                  : addr.address.fullAddress
+                );
+              } catch {
+                fullAddress = addr.address || '';
+              }
               return (
-                <TouchableOpacity
+                <View
                   key={idx}
-                  onPress={() => setSelectedAddressIndex(prev => (prev === idx ? null : idx))}
-                  style={[styles.addressSelectable]}
+                  style={[
+                    styles.addressSelectable,
+                    idx === selectedAddressIndex && { borderColor: '#007bff', backgroundColor: '#e6f0ff' }
+                  ]}
                 >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                    {/* Checkbox */}
-                    <View style={[
-                      styles.checkbox,
-                      isSelected && styles.checkboxSelected,
-                      { justifyContent: 'center', alignItems: 'center' }
-                    ]}>
-                      {isSelected && (
-                        <Ionicons name="checkmark" size={18} color="#fff" />
-                      )}
-                    </View>
-                    <View style={{ marginLeft: 10, flexShrink: 1 }}>
-                      <Text style={{ fontWeight: 'bold' }}>{addr.name}</Text>
-                      <Text numberOfLines={2}>
-                        {getFullAddressString(addr)}
-                      </Text>
-                      <Text>Mobile: {addr.addr_mobile}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontWeight: 'bold' }}>{addr.name} <Text style={styles.homeBadge}>HOME</Text></Text>
+                    <Text style={{ color: '#555', marginTop: 2 }} numberOfLines={2}>
+                      {[fullAddress, addr.locality, addr.city, addr.state, addr.pincode, addr.landmark].filter(Boolean).join(', ')}
+                    </Text>
+                    <Text style={{ color: '#555', marginTop: 2 }}>Mobile: {addr.addr_mobile}</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end', justifyContent: 'space-between' }}>
+                    <TouchableOpacity
+                      style={[styles.orderButton, { backgroundColor: '#ff9500', marginBottom: 8, paddingHorizontal: 16, paddingVertical: 8 }]}
+                      onPress={() => {
+                        setSelectedAddressIndex(idx);
+                        setShowSelectAddressModal(false);
+                      }}
+                    >
+                      <Text style={{ color: '#fff', fontWeight: 'bold' }}>Deliver Here</Text>
+                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row' }}>
+                      <TouchableOpacity onPress={() => editAddress(idx)} style={{ marginRight: 15 }}>
+                        <Text style={{ color: 'blue' }}>Edit</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => removeAddress(idx)}>
+                        <Text style={{ color: 'red' }}>Remove</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <TouchableOpacity onPress={() => editAddress(idx)} style={{ marginRight: 15 }}>
-                      <Text style={{ color: 'blue' }}>Edit</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => removeAddress(idx)}>
-                      <Text style={{ color: 'red' }}>Remove</Text>
-                    </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
+                </View>
               );
             })}
           </ScrollView>
 
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 }}>
-            <TouchableOpacity style={[styles.orderButton, { backgroundColor: '#aaa' }]} onPress={() => setShowSelectAddressModal(false)}>
-              <Text style={styles.orderButtonText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.orderButton} onPress={confirmSelectedAddress}>
-              <Text style={styles.orderButtonText}>Confirm</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity style={[styles.orderButton, { backgroundColor: '#aaa', marginTop: 20 }]} onPress={() => setShowSelectAddressModal(false)}>
+            <Text style={styles.orderButtonText}>Cancel</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
 
@@ -683,31 +787,12 @@ export default function CartScreen({ navigation, route }) {
         </KeyboardAvoidingView>
       </Modal>
 
-      <FlatList
-        data={cart}
-        keyExtractor={(item) => `${item.product_id}_${item.variant_id}`}
-        renderItem={renderItem}
-        ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20 }}>Your cart is empty.</Text>}
-      />
-
-      <View style={styles.totalContainer}>
-        <Text style={styles.totalText}>Total Items: {totalItems}</Text>
-        <Text style={styles.totalText}>Total Amount: ₹{totalAmount.toFixed(2)}</Text>
-      </View>
-
-      <TouchableOpacity
-        style={[styles.orderButton, { marginBottom: 10 }]}
-        onPress={() => {fetchAddresses(),setShowSelectAddressModal(true)}}
-      >
-        <Text style={styles.orderButtonText} >Select Delivery Address</Text>
-      </TouchableOpacity>
-
       <TouchableOpacity
         style={[styles.proceedButton, selectedAddressIndex === null && styles.proceedButtonDisabled]}
         onPress={proceedToPayment}
         disabled={selectedAddressIndex === null}
       >
-        <Text style={styles.proceedButtonText}>Proceed to Payment</Text>
+        <Text style={styles.proceedButtonText}>Proceed To Payment</Text>
       </TouchableOpacity>
     </View>
   );
@@ -715,25 +800,42 @@ export default function CartScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 10, backgroundColor: '#fff' },
+  addressCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 0,
+    minHeight: 60,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  selectAddressBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 5,
+  },
+  changeBtn: {
+    marginLeft: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 5,
+    backgroundColor: '#e6f0ff',
+  },
   item: {
     flexDirection: 'row', alignItems: 'center',
-    padding: 10, borderBottomWidth: 1, borderBottomColor: '#ccc'
+    padding: 2, borderBottomWidth: 1, borderBottomColor: '#ccc'
   },
-  image: { width: 80, height: 80, borderRadius: 8, backgroundColor: '#eee' },
+  image: { width: 50, height: 50, borderRadius: 8, backgroundColor: '#eee' },
   info: { flex: 1, marginLeft: 10 },
   name: { fontWeight: 'bold', fontSize: 16 },
-  details: { color: '#555', marginTop: 4 },
-  pincodeContainer: { flexDirection: 'row', marginBottom: 10 },
-  pincodeInput: {
-    flex: 1, borderWidth: 1, borderColor: '#ccc',
-    borderRadius: 5, padding: 8, marginRight: 10,
-  },
-  checkButton: {
-    backgroundColor: '#007bff', padding: 10,
-    borderRadius: 5, justifyContent: 'center',
-  },
-  checkButtonText: { color: '#fff', fontWeight: 'bold' },
-  locationText: { marginBottom: 10, fontWeight: 'bold' },
+  details: { color: '#555', marginTop: 4  },
   orderButton: {
     backgroundColor: '#28a745',
     padding: 15,
@@ -780,11 +882,12 @@ const styles = StyleSheet.create({
     borderColor: '#007bff',
   },
   proceedButton: {
-    backgroundColor: '#007bff',
-    padding: 15,
+    backgroundColor: '#ff9500',
+    padding: 10,
     borderRadius: 10,
     alignItems: 'center',
-    marginBottom: 10
+    marginTop: 2,
+    marginBottom: 0
   },
   proceedButtonDisabled: {
     backgroundColor: '#999999',
@@ -797,24 +900,37 @@ const styles = StyleSheet.create({
   quantityControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 6,
   },
   quantityButton: {
     backgroundColor: '#ccc',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 7,
+    paddingVertical: 0,
     borderRadius: 5,
+    marginRight: 10,
   },
   quantityButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
+    
   },
   quantityText: {
     marginHorizontal: 10,
     fontSize: 16,
+    marginLeft: 0,
   },
   inputError: {
-  borderColor: 'red',
-  backgroundColor: '#fff0f0',
-},
+    borderColor: 'red',
+    backgroundColor: '#fff0f0',
+  },
+  homeBadge: {
+    backgroundColor: '#e6f0ff',
+    color: '#007bff',
+    fontWeight: 'bold',
+    fontSize: 12,
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    marginLeft: 6,
+    overflow: 'hidden',
+  },
 });

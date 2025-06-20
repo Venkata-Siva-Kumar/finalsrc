@@ -607,7 +607,7 @@ export default function HomeScreen({ navigation, route }) {
         <View
           style={{
             marginHorizontal: 12,
-            marginBottom: 8,
+            marginBottom: 1,
             borderRadius: 10,
             overflow: 'hidden',
             backgroundColor: '#fffbe6',
@@ -754,9 +754,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 14,
-    marginHorizontal: 2,
+    paddingHorizontal: 10,
+    marginBottom: 2,
+    marginHorizontal: 0,
     elevation: 2,
     shadowColor: '#000',
     shadowOpacity: 0.07,

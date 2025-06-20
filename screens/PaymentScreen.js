@@ -30,10 +30,9 @@ export default function PaymentScreen({ navigation, route }) {
   const userMobile = route?.params?.userMobile || "9876543210";
   const selectedAddress = route?.params?.selectedAddress || {};
   const address_id = selectedAddress.id || selectedAddress.address_id || null;
-  const totalAmount =
-    cart.length > 0
-      ? cart.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)
-      : "0.00";
+  const totalAmount = route.params?.totalAmount?.toFixed
+    ? route.params.totalAmount.toFixed(2)
+    : (route.params?.totalAmount || "0.00");
   const [orderSuccess, setOrderSuccess] = useState(false);
   const { setCart } = useContext(CartContext);
   const user_id = route.params?.user_id;
