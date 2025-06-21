@@ -289,8 +289,14 @@ export default function CartScreen({ navigation, route }) {
             try {
               const addressToRemove = addresses[index];
               if (addressToRemove.id) {
-                await fetch(`${API_BASE_URL}/addresses/${addressToRemove.id}`, { method: 'DELETE' });
+              const res = await fetch(`${API_BASE_URL}/addresses/${addressToRemove.id}`, { method: 'DELETE' });
+              const data = await res.json();
+              if (!res.ok) {
+                // Show backend error message (e.g. pending orders)
+                Alert.alert('Cannot Remove Address', data.message || 'Failed to remove address from database.');
+                return;
               }
+            }
               setAddresses(prev => {
                 const updated = [...prev];
                 updated.splice(index, 1);
@@ -384,8 +390,24 @@ export default function CartScreen({ navigation, route }) {
     });
   };
 
-  const editAddress = (index) => {
+  const editAddress = async (index) => {
     const addr = addresses[index];
+    // Check for pending orders before allowing edit
+    try {
+      const res = await fetch(`${API_BASE_URL}/addresses/${addr.id}/pending-orders`);
+      const data = await res.json();
+      if (data.hasPending) {
+        Alert.alert(
+          'Cannot Edit Address',
+          'This address is linked to pending orders and cannot be edited.'
+        );
+        return;
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Could not check pending orders for this address.');
+      return;
+    }
+
     let fullAddress = '';
     if (typeof addr.address === 'string') {
       fullAddress = addr.address;

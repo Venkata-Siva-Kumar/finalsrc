@@ -216,19 +216,46 @@ app.get('/addresses', (req, res) => {
 // ✅ Remove Address
 app.delete('/addresses/:id', (req, res) => {
   const { id } = req.params;
-  db.query('DELETE FROM addresses WHERE id = ?', [id], (err, result) => {
-    if (err) {
-      console.error('❌ Error deleting address:', err);
-      return res.status(500).json({ message: 'Error deleting address: ' + err.message });
+  // Only block if there are orders NOT delivered or canceled
+  db.query(
+    `SELECT * FROM orders WHERE address_id = ? AND orderStatus NOT IN ('Delivered', 'Cancelled')`,
+    [id],
+    (err, rows) => {
+      if (err) {
+        console.error('❌ Error checking orders:', err);
+        return res.status(500).json({ message: 'Error checking orders: ' + err.message });
+      }
+      if (rows.length > 0) {
+        return res.status(400).json({ message: 'There are pending orders for this address.' });
+      }
+      // No pending orders, safe to delete
+      db.query('DELETE FROM addresses WHERE id = ?', [id], (err2, result) => {
+        if (err2) {
+          console.error('❌ Error deleting address:', err2);
+          return res.status(500).json({ message: 'Error deleting address: ' + err2.message });
+        }
+        if (result.affectedRows === 0) {
+          return res.status(404).json({ message: 'Address not found' });
+        }
+        res.json({ message: 'Address deleted successfully' });
+      });
     }
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Address not found' });
-    }
-    res.json({ message: 'Address deleted successfully' });
-  });
+  );
 });
 
-
+app.get('/addresses/:id/pending-orders', (req, res) => {
+  const { id } = req.params;
+  db.query(
+    `SELECT * FROM orders WHERE address_id = ? AND orderStatus NOT IN ('Delivered', 'Cancelled')`,
+    [id],
+    (err, rows) => {
+      if (err) {
+        return res.status(500).json({ hasPending: false, error: 'Database error' });
+      }
+      res.json({ hasPending: rows.length > 0 });
+    }
+  );
+});
 
 // Example for Express backend
 // Express backend example
@@ -855,20 +882,43 @@ app.get('/pincodes', (req, res) => {
 // Delete a product and its variants/images
 app.delete('/products/:id', (req, res) => {
   const productId = req.params.id;
-  // Delete variants first
-  db.query('DELETE FROM product_variants WHERE product_id = ?', [productId], (err) => {
-    if (err) return res.status(500).json({ error: 'Failed to delete variants' });
-    // Delete images next
-    db.query('DELETE FROM images WHERE product_id = ?', [productId], (err2) => {
-      if (err2) return res.status(500).json({ error: 'Failed to delete images' });
-      // Now delete the product
-      db.query('DELETE FROM products WHERE id = ?', [productId], (err3, result) => {
-        if (err3) return res.status(500).json({ error: 'Failed to delete product' });
-        if (result.affectedRows === 0) return res.status(404).json({ error: 'Product not found' });
-        res.json({ success: true });
+
+  // Check for pending orders
+  db.query(
+    `SELECT oi.* FROM order_items oi
+     JOIN orders o ON oi.orderId = o.orderId
+     WHERE oi.productId = ? AND o.orderStatus != 'Delivered'`,
+    [productId],
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      if (rows.length > 0) {
+        return res.status(400).json({ error: 'Cannot delete product: There are pending orders for this product.' });
+      }
+
+      // Start by checking if the product exists
+      db.query('SELECT id FROM products WHERE id = ?', [productId], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Database error' });
+        if (!rows.length) return res.status(404).json({ error: 'Product not found' });
+
+        // Delete variants first
+        db.query('DELETE FROM product_variants WHERE product_id = ?', [productId], (err) => {
+          if (err) return res.status(500).json({ error: 'Failed to delete variants' });
+
+          // Delete images next
+          db.query('DELETE FROM images WHERE product_id = ?', [productId], (err2) => {
+            if (err2) return res.status(500).json({ error: 'Failed to delete images' });
+
+            // Now delete the product
+            db.query('DELETE FROM products WHERE id = ?', [productId], (err3, result) => {
+              if (err3) return res.status(500).json({ error: 'Failed to delete product' });
+              if (result.affectedRows === 0) return res.status(404).json({ error: 'Product not found' });
+              res.json({ success: true });
+            });
+          });
+        });
       });
-    });
-  });
+    }
+  );
 });
 
 
