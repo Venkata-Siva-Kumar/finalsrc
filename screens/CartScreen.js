@@ -38,7 +38,25 @@ export default function CartScreen({ navigation, route }) {
   const [isApplying, setIsApplying] = useState(false);
 
   // Delivery charge (always free for now)
-  const deliveryCharge = 0;
+  const [deliveryChargeSetting, setDeliveryChargeSetting] = useState({ delivery_charge: 0, free_delivery_limit: 0 });
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/delivery-settings`)
+      .then(res => res.json())
+      .then(data => setDeliveryChargeSetting(data))
+      .catch(() => setDeliveryChargeSetting({ delivery_charge: 0, free_delivery_limit: 0 }));
+  }, []);
+
+  const totalAmount = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  const FREE_DELIVERY_LIMIT = Number(deliveryChargeSetting.free_delivery_limit || 0);
+  const DELIVERY_CHARGE = Number(deliveryChargeSetting.delivery_charge || 0);
+
+  const isFreeDelivery = totalAmount >= FREE_DELIVERY_LIMIT;
+  const deliveryCharge = isFreeDelivery ? 0 : DELIVERY_CHARGE;
+  const amountForFreeDelivery = isFreeDelivery ? 0 : FREE_DELIVERY_LIMIT - totalAmount;
+
 
   // Fetch cart from backend every time screen is focused
   useFocusEffect(
@@ -83,8 +101,6 @@ export default function CartScreen({ navigation, route }) {
     fetchAddresses();
   }, [loggedInMobile]);
 
-  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const totalAmount = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   // Coupon logic
   useEffect(() => {
@@ -350,45 +366,44 @@ export default function CartScreen({ navigation, route }) {
   }
 
   const proceedToPayment = async () => {
-    if (cart.length === 0) {
-      Alert.alert('Cart Empty', 'Please add items to your cart before proceeding.');
-      return;
-    }
-    if (finalAmount < 500) {
-      Alert.alert('Minimum Order', 'The minimum cart value should be ₹500.');
-      return;
-    }
-    if (selectedAddressIndex === null) {
-      Alert.alert('No Delivery Address', 'Please select a delivery address.');
-      return;
-    }
-    const selectedAddress = addresses[selectedAddressIndex];
-    const cleanMobile = (loggedInMobile || '').replace(/^\+91/, '').replace(/\D/g, '').slice(-10);
+  if (cart.length === 0) {
+    Alert.alert('Cart Empty', 'Please add items to your cart before proceeding.');
+    return;
+  }
+  if (selectedAddressIndex === null) {
+    Alert.alert('No Delivery Address', 'Please select a delivery address.');
+    return;
+  }
+  const selectedAddress = addresses[selectedAddressIndex];
+  const cleanMobile = (loggedInMobile || '').replace(/^\+91/, '').replace(/\D/g, '').slice(-10);
 
-    // --- Pincode validation using /pincodes endpoint ---
-    const pincode = selectedAddress.pincode;
-    try {
-      const res = await fetch(`${API_BASE_URL}/pincodes`);
-      const validPincodes = await res.json();
-      if (!Array.isArray(validPincodes) || !validPincodes.includes(pincode)) {
-        Alert.alert('Delivery Not Available', `Sorry, we do not deliver to pincode ${pincode}.`);
-        return;
-      }
-    } catch (e) {
-      Alert.alert('Error', 'Could not validate pincode. Please try again.');
+  // --- Pincode validation using /pincodes endpoint ---
+  const pincode = selectedAddress.pincode;
+  try {
+    const res = await fetch(`${API_BASE_URL}/pincodes`);
+    const validPincodes = await res.json();
+    if (!Array.isArray(validPincodes) || !validPincodes.includes(pincode)) {
+      Alert.alert('Delivery Not Available', `Sorry, we do not deliver to pincode ${pincode}.`);
       return;
     }
+  } catch (e) {
+    Alert.alert('Error', 'Could not validate pincode. Please try again.');
+    return;
+  }
 
-    navigation.navigate('Payment', {
-      cart,
-      userMobile: cleanMobile,
-      selectedAddress,
-      totalAmount: finalAmount,
-      originalAmount: totalAmount,
-      discount,
-      user_id: loggedInUserId,
-    });
-  };
+  navigation.navigate('Payment', {
+    cart,
+    userMobile: cleanMobile,
+    selectedAddress,
+    totalAmount: finalAmount + deliveryCharge, // include delivery charge
+    originalAmount: totalAmount,
+    discount,
+    couponCode,
+    user_id: loggedInUserId,
+    deliveryCharge,
+    freeDeliveryLimit: FREE_DELIVERY_LIMIT,
+  });
+};
 
   const editAddress = async (index) => {
     const addr = addresses[index];
@@ -599,15 +614,23 @@ export default function CartScreen({ navigation, route }) {
             <Text style={{ color: "green" }}>- ₹{discount.toFixed(2)}</Text>
           </View>
         )}
-        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
-          <Text>Delivery Charges</Text>
-          <Text style={{ color: "green" }}>FREE Delivery</Text>
-        </View>
+        {cart.length > 0 && (
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
+            <Text>Delivery Charges</Text>
+            <Text style={{ color: isFreeDelivery ? "green" : "red" }}>
+              {isFreeDelivery ? "FREE Delivery" : `₹${DELIVERY_CHARGE}`}
+            </Text>
+          </View>
+        )}
+
         <View style={{ borderTopWidth: 1, borderTopColor: "#eee", marginVertical: 8 }} />
         <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 0 }}>
-          <Text style={{ fontWeight: "bold" }}>Total Amount</Text>
-          <Text style={{ fontWeight: "bold" }}>₹{finalAmount.toFixed(2)}</Text>
+        <Text style={{ fontWeight: "bold" }}>Total Amount</Text>
+          <Text style={{ fontWeight: "bold" }}>
+            ₹{cart.length === 0 ? "0.00" : (finalAmount + deliveryCharge).toFixed(2)}
+          </Text>
         </View>
+
         {discount > 0 && (
           <Text style={{ color: "green", marginTop: 3 }}>
             You will save ₹{discount.toFixed(2)} on this order
@@ -808,6 +831,24 @@ export default function CartScreen({ navigation, route }) {
           </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
+
+      {cart.length > 0 && !isFreeDelivery && (
+        <View style={{
+          backgroundColor: '#fffbe6',
+          borderRadius: 8,
+          padding: 10,
+          marginTop: 10,
+          marginBottom: 5,
+          borderWidth: 1,
+          borderColor: '#ffe58f',
+          alignItems: 'center'
+        }}>
+          <Text style={{ color: '#b26a00', fontWeight: 'bold' }}>
+            Add items worth ₹{amountForFreeDelivery} more for FREE delivery
+          </Text>
+        </View>
+      )}
+
 
       <TouchableOpacity
         style={[styles.proceedButton, selectedAddressIndex === null && styles.proceedButtonDisabled]}

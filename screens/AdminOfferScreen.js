@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Button, Alert, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { API_BASE_URL } from '../config';
 
-const AdminOfferScreen = () => {
+// --- Offers Tab ---
+function OffersTab() {
   const [couponCode, setCouponCode] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -149,6 +151,7 @@ const AdminOfferScreen = () => {
       <TextInput
         style={styles.input}
         placeholder="Coupon Code"
+        placeholderTextColor="#888"
         value={couponCode}
         onChangeText={handleCouponCodeInput}
         autoCapitalize="characters"
@@ -230,7 +233,89 @@ const AdminOfferScreen = () => {
       ))}
     </ScrollView>
   );
-};
+}
+
+// --- Delivery Charges Tab ---
+function DeliveryChargesTab() {
+  const [deliveryCharge, setDeliveryCharge] = useState('');
+  const [freeDeliveryLimit, setFreeDeliveryLimit] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/delivery-settings`)
+      .then(res => res.json())
+      .then(data => {
+        setDeliveryCharge(String(data.delivery_charge));
+        setFreeDeliveryLimit(String(data.free_delivery_limit));
+      });
+  }, []);
+
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/delivery-settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          delivery_charge: Number(deliveryCharge),
+          free_delivery_limit: Number(freeDeliveryLimit),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        Alert.alert('Success', 'Delivery settings updated!');
+      } else {
+        Alert.alert('Error', 'Failed to update!');
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to update!');
+    }
+    setLoading(false);
+  };
+
+  return (
+    <View style={{ padding: 20 }}>
+      <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 10 }}>Delivery Charges Settings</Text>
+      <Text>Delivery Charge (₹):</Text>
+      <TextInput
+        style={styles.input}
+        value={deliveryCharge}
+        onChangeText={setDeliveryCharge}
+        keyboardType="numeric"
+        placeholder="Delivery Charge"
+        placeholderTextColor="#888"
+      />
+      <Text>Free Delivery Limit (₹):</Text>
+      <TextInput
+        style={styles.input}
+        value={freeDeliveryLimit}
+        onChangeText={setFreeDeliveryLimit}
+        keyboardType="numeric"
+        placeholder="Free Delivery Limit"
+        placeholderTextColor="#888"
+      />
+      <TouchableOpacity
+        style={{ backgroundColor: '#007aff', padding: 12, borderRadius: 8, alignItems: 'center', marginTop: 10 }}
+        onPress={handleSave}
+        disabled={loading}
+      >
+        <Text style={{ color: '#fff', fontWeight: 'bold' }}>{loading ? 'Saving...' : 'Save'}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// --- Top Tabs Setup ---
+const Tab = createMaterialTopTabNavigator();
+
+export default function AdminOfferScreen() {
+  return (
+    <Tab.Navigator>
+      <Tab.Screen name="Coupon Offers" component={OffersTab} />
+      <Tab.Screen name="Delivery Charges" component={DeliveryChargesTab} />
+    </Tab.Navigator>
+  );
+}
 
 const styles = StyleSheet.create({
   container: { padding: 20, backgroundColor: '#fff', flexGrow: 1 },
@@ -241,5 +326,3 @@ const styles = StyleSheet.create({
   editBtn: { backgroundColor: '#007bff', padding: 8, borderRadius: 5, marginRight: 10 },
   removeBtn: { backgroundColor: '#d9534f', padding: 8, borderRadius: 5 },
 });
-
-export default AdminOfferScreen;

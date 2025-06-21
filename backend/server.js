@@ -20,6 +20,7 @@ const db = mysql.createConnection({
 });
 
 
+
 db.connect(err => {
   if (err) {
     console.error('❌ Database connection failed:', err);
@@ -143,7 +144,7 @@ app.get('/products', (req, res) => {
 });
 
 app.post('/place-order', (req, res) => {
-  let { orderId, totalAmount, orderDate, orderStatus, user_id, mobile, address_id, items } = req.body;
+  let { orderId, totalAmount, orderDate, orderStatus, user_id, mobile, address_id, items, coupon_code, discount, final_amount, delivery_charge } = req.body;
 
   function getUserIdAndInsertOrder() {
     if (!user_id && mobile) {
@@ -165,11 +166,11 @@ app.post('/place-order', (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const orderSql = `INSERT INTO orders (orderId, totalAmount, orderDate, orderStatus, user_id, address_id)
-                      VALUES (?, ?, ?, ?, ?, ?)`;
+    const orderSql = `INSERT INTO orders (orderId, totalAmount, orderDate, orderStatus, user_id, address_id, coupon_code, discount, final_amount, delivery_charge)
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     db.query(
       orderSql,
-      [orderId, totalAmount, orderDate, orderStatus, user_id, address_id || null],
+      [orderId, totalAmount, orderDate, orderStatus, user_id, address_id || null, coupon_code || null, discount || 0, final_amount || totalAmount, delivery_charge || 0],
       (err, orderResult) => {
         if (err) {
           return res.status(500).json({ error: 'Failed to insert order', details: err.message });
@@ -371,7 +372,11 @@ app.get('/orders', (req, res) => {
           orderDate: order.orderDate,
           orderStatus: order.orderStatus,
           totalAmount: order.totalAmount,
+          final_amount: order.final_amount,
+          coupon_code: order.coupon_code,
+          discount: order.discount,
           items: itemsByOrder[order.orderId] || [],
+          delivery_charge: order.delivery_charge,
           deliveryAddress: {
             name: order.name,
             mobile: order.addr_mobile,
@@ -1149,6 +1154,32 @@ res.json({
     }
   );
 });
+
+// Get delivery settings
+app.get('/delivery-settings', (req, res) => {
+  db.query('SELECT * FROM delivery_settings ORDER BY id DESC LIMIT 1', (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    if (!rows.length) return res.json({ delivery_charge: 0, free_delivery_limit: 0 });
+    res.json(rows[0]);
+  });
+});
+
+// Update delivery settings (admin only)
+app.put('/delivery-settings', (req, res) => {
+  const { delivery_charge, free_delivery_limit } = req.body;
+  if (delivery_charge == null || free_delivery_limit == null) {
+    return res.status(400).json({ error: 'Missing fields' });
+  }
+  db.query(
+    'UPDATE delivery_settings SET delivery_charge=?, free_delivery_limit=? ORDER BY id DESC LIMIT 1',
+    [delivery_charge, free_delivery_limit],
+    (err, result) => {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      res.json({ success: true });
+    }
+  );
+});
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running on http://0.0.0.0:${PORT}`));

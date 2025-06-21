@@ -63,7 +63,7 @@ function OrdersTab({ orders, productMap, status, updateOrderStatus, onOrderPress
               <Ionicons name="chevron-forward" size={22} color="#888" />
             </View>
             <Text>User: {item.userMobile}</Text>
-            <Text>Total: ₹{item.totalAmount}</Text>
+            <Text>Amount : ₹{item.final_amount != null ? item.final_amount : item.totalAmount}</Text>
             <Text
               style={{
                 color:

@@ -56,11 +56,55 @@ export default function OrderDetailsScreen({ route, navigation }) {
   return (
     <View style={{ flex: 1 }}>
       <ScrollView style={styles.container}>
-        
         <Text style={styles.label}>Order ID: <Text style={styles.value}>{order.orderId}</Text></Text>
         <Text style={styles.label}>User: <Text style={styles.value}>{order.userMobile}</Text></Text>
         <Text style={styles.label}>Total: <Text style={styles.value}>₹{order.totalAmount}</Text></Text>
-        <Text style={styles.label}>Status: <Text style={styles.value}>{order.orderStatus}</Text></Text>
+        <Text style={styles.label}>
+          Delivery Charge:{" "}
+          <Text
+            style={[
+              styles.value,
+              Number(order.delivery_charge) === 0 && { color: 'green', fontWeight: 'bold' }
+            ]}
+          >
+            {Number(order.delivery_charge) > 0
+              ? `₹${Number(order.delivery_charge).toFixed(2)}`
+              : 'FREE Delivery'}
+          </Text>
+        </Text>
+        {order.coupon_code && Number(order.discount) > 0 && (
+          <View style={{ marginLeft: 0, marginTop: 7 }}>
+            <Text style={[styles.label, { color: '#007bff' }]}>
+              Coupon Applied: <Text style={{ fontWeight: 'bold' }}>{order.coupon_code}</Text>
+            </Text>
+            <Text style={[styles.label, { color: 'green' }]}>
+              Discount: -₹{Number(order.discount).toFixed(2)}
+            </Text>
+          </View>
+        )}
+        <Text style={styles.label}>
+          Final Amount:{" "}
+          <Text style={styles.finalAmount}>
+            ₹{order.final_amount != null ? order.final_amount : order.totalAmount}
+          </Text>
+        </Text>
+        <Text style={styles.label}>
+          Status:{" "}
+          <Text
+            style={[
+              styles.value,
+              order.orderStatus === 'Delivered'
+                ? { color: 'green', fontWeight: 'bold' }
+                : order.orderStatus === 'Pending'
+                ? { color: 'orange', fontWeight: 'bold' }
+                : order.orderStatus === 'Cancelled'
+                ? { color: 'red', fontWeight: 'bold' }
+                : { color: '#333' }
+            ]}
+          >
+            {order.orderStatus}
+          </Text>
+        </Text>
         <Text style={styles.label}>Date: <Text style={styles.value}>{order.orderDate ? new Date(order.orderDate).toLocaleString() : 'N/A'}</Text></Text>
         <Text style={[styles.label, {marginTop: 10}]}>Products:</Text>
         {order.items && order.items.length > 0 ? (
@@ -184,4 +228,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  finalAmount: {
+    color: '#007bff',
+    fontWeight: 'bold',
+    fontSize: 20,
+    marginLeft: 8,
+  },
 });

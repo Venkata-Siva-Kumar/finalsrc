@@ -121,7 +121,7 @@ export default function OrdersScreen({ route, navigation }) {
               Status: {item.orderStatus}
             </Text>
             <Text style={{ fontWeight: 'bold', color: '#007aff' }}>
-              Amount: ₹{item.totalAmount}
+              Amount: ₹{item.final_amount != null ? item.final_amount : item.totalAmount}
             </Text>
             <Ionicons name="chevron-forward" size={22} color="#888" style={{ position: 'absolute', right: 16, top: 24 }} />
           </TouchableOpacity>

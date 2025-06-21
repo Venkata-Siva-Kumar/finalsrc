@@ -63,7 +63,7 @@ export default function PaymentScreen({ navigation, route }) {
 
       const orderData = {
         orderId,
-        totalAmount: parseFloat(totalAmount),
+        totalAmount: parseFloat(route.params?.originalAmount || totalAmount),
         orderDate,
         orderStatus: "Pending",
         user_id: user_id || null,
@@ -74,7 +74,11 @@ export default function PaymentScreen({ navigation, route }) {
           variantId: item.variant_id,
           quantity: item.quantity,
           price: item.price
-        }))
+        })),
+        coupon_code: route.params?.couponCode || null,
+        discount: route.params?.discount || 0,
+        final_amount: parseFloat(route.params?.totalAmount || totalAmount),
+        delivery_charge: route.params?.deliveryCharge || 0 ,
       };
 
       const response = await fetch(`${API_BASE_URL}/place-order`, {

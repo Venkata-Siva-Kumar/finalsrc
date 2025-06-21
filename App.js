@@ -89,12 +89,12 @@ function AdminTabs() {
       <Tab.Screen
         name="Offers"
         component={AdminOfferScreen}
-        options={{ title: "Offers", headerTitleAlign: 'center', headerTitleStyle: { fontWeight: 'bold', fontSize: 25 }, tabBarLabel: "Offers" }}
+        options={{ title: "Offers", headerTitleAlign: 'center', headerTitleStyle: { fontWeight: 'bold', fontSize: 25 }, tabBarLabel: "Offers", headerLeft: () => <AppHeaderIcon /> ,}}
       />
       <Tab.Screen
         name="Banner"
         component={BannerTab}
-        options={{ title: "Banner", headerTitleAlign: 'center', headerTitleStyle: { fontWeight: 'bold', fontSize: 25 }, tabBarLabel: "Banner" }}
+        options={{ title: "Banner", headerTitleAlign: 'center', headerTitleStyle: { fontWeight: 'bold', fontSize: 25 }, tabBarLabel: "Banner", headerLeft: () => <AppHeaderIcon /> ,}}
       />
       <Tab.Screen
         name="Earnings"
