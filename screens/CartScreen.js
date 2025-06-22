@@ -495,6 +495,24 @@ export default function CartScreen({ navigation, route }) {
     }
   };
 
+  const fetchPincodeDetails = async (pincode) => {
+  if (!/^\d{6}$/.test(pincode)) return;
+  try {
+    const res = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+    const data = await res.json();
+    if (Array.isArray(data) && data[0].Status === "Success" && data[0].PostOffice && data[0].PostOffice.length > 0) {
+      const postOffice = data[0].PostOffice[0];
+      setAddressForm(prev => ({
+        ...prev,
+        city: postOffice.Name || prev.city,
+        state: postOffice.State || prev.state,
+      }));
+    }
+  } catch (e) {
+    // Optionally handle error
+  }
+};
+
   // --- UI ---
   return (
     <View style={styles.container}>
@@ -753,7 +771,12 @@ export default function CartScreen({ navigation, route }) {
             <TextInput
               style={[styles.input, addressTouched.pincode && !addressForm.pincode ? styles.inputError : null]}
               value={addressForm.pincode}
-              onChangeText={(text) => setAddressForm({ ...addressForm, pincode: text })}
+              onChangeText={(text) => {
+                setAddressForm({ ...addressForm, pincode: text });
+                if (text.length === 6 && /^\d{6}$/.test(text)) {
+                  fetchPincodeDetails(text);
+                }
+              }}
               placeholder="Pincode"
               placeholderTextColor="#888"
               keyboardType="numeric"

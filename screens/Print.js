@@ -71,7 +71,7 @@ const getPrintHtml = (order, productMap) => {
 <b>Items</b>: ${totalItems}      <b>Qty</b>: ${totalQty}          
       
         MRP Price         : ${padLeft('₹' + totalMRP.toFixed(2), valueWidth)}
-        Savings on Mrp(-) : ${padLeft('₹' + totalSavings.toFixed(2), valueWidth)}
+        Savings on MRP(-) : ${padLeft('₹' + totalSavings.toFixed(2), valueWidth)}
 ---------------------------------------------------
         Total Price       : ${padLeft('₹' + totalSelling.toFixed(2), valueWidth)}
         Coupon Discount(-): ${padLeft('₹' + couponDiscount.toFixed(2), valueWidth)}
