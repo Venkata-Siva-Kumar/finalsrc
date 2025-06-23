@@ -4,7 +4,6 @@ const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
 require('dotenv').config();
 
-
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
@@ -19,8 +18,6 @@ const db = mysql.createConnection({
   multipleStatements: true
 });
 
-
-
 db.connect(err => {
   if (err) {
     console.error('❌ Database connection failed:', err);
@@ -28,8 +25,6 @@ db.connect(err => {
   }
   console.log('✅ Connected to database');
 });
-
-
 
 app.post('/signup', (req, res) => {
   const { fname, lname, mobile, password, gender, email, dob } = req.body;
@@ -1127,7 +1122,7 @@ app.post('/api/apply-coupon', (req, res) => {
         return res.status(500).json({ valid: false, message: 'Server error' });
       }
       if (!rows.length) {
-        return res.json({ valid: false, message: 'Invalid or expired coupon for this cart value.' });
+        return res.json({ valid: false, message: 'Invalid or expired coupon' });
       }
 
       // Now check date validity in JS
@@ -1137,7 +1132,7 @@ app.post('/api/apply-coupon', (req, res) => {
 
       if (!startDate || !endDate || !todayDate ||
           todayDate < startDate || todayDate > endDate) {
-        return res.json({ valid: false, message: 'Invalid or expired coupon for this date.' });
+        return res.json({ valid: false, message: 'Coupon expired' });
       }
 
       let discount = Number(cart_value) * Number(offer.discount_percent) / 100;

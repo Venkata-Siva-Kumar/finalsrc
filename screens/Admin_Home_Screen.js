@@ -339,16 +339,21 @@ function AddProductTab({ onProductAdded }) {
   };
 
   const handleAddProduct = async () => {
-    if (!name.trim() || !category_id || !variants.length || !imageBase64) {
-      Alert.alert('Error', 'Fill all fields and add at least one variant');
+    // Filter out empty/incomplete variants
+    const validVariants = variants.filter(
+      v => v.quantity_value && v.price // add more checks if needed (e.g., v.mrp)
+    );
+
+    if (!name.trim() || !category_id || !validVariants.length || !imageBase64) {
+      Alert.alert('Error', 'Fill all fields and add atleast one variant');
       return;
     }
     try {
       const prodRes = await axios.post(`${API_BASE_URL}/products`, {
         name,
         description,
-        category_id:Number(category_id),
-        variants,
+        category_id: Number(category_id),
+        variants: validVariants,
       });
       const product_id = prodRes.data.id;
       await axios.post(`${API_BASE_URL}/images`, {
@@ -364,7 +369,8 @@ function AddProductTab({ onProductAdded }) {
       setVariants([{ quantity_value: '', price: '', mrp: '' }]);
       if (onProductAdded) onProductAdded();
     } catch (err) {
-      Alert.alert('Error', err?.response?.data?.error || err.message || 'Failed to add product or image');
+      Alert.alert('Error', 'Product name already exists or failed to add product');
+
     }
   };
 
@@ -574,26 +580,35 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
   };
 
   const saveEdit = async () => {
-    if (!editName.trim() || !editVariants.length) {
-      Alert.alert('Error', 'Enter valid name and at least one variant');
-      return;
+  const validVariants = editVariants.filter(
+    v => v.quantity_value && v.price
+  );
+
+  if (!editName.trim() || !validVariants.length) {
+    Alert.alert('Error', 'Enter valid name and at least one variant');
+    return;
+  }
+  setLoadingId('edit' + editProduct.id);
+  try {
+    await axios.put(`${API_BASE_URL}/products/${editProduct.id}`, {
+      name: editName,
+      variants: validVariants,
+      description: editDescription, 
+      category_id: editCategoryId,
+    });
+    setEditModalVisible(false);
+    setEditProduct(null);
+    refreshProducts();
+  } catch (err) {
+    const msg = err?.response?.data?.error || 'Failed to update product';
+    if (msg.toLowerCase().includes('already exists')) {
+      Alert.alert('Error', 'A product with this name already exists. Please choose a different name.');
+    } else {
+      Alert.alert('Already Exists', 'A product with the same name already exists. Please choose a different name.');
     }
-    setLoadingId('edit' + editProduct.id);
-    try {
-      await axios.put(`${API_BASE_URL}/products/${editProduct.id}`, {
-        name: editName,
-        variants: editVariants,
-        description: editDescription, 
-        category_id: editCategoryId,
-      });
-      setEditModalVisible(false);
-      setEditProduct(null);
-      refreshProducts();
-    } catch (err) {
-      Alert.alert('Error', err?.response?.data?.error || 'Failed to update product');
-    }
-    setLoadingId(null);
-  };
+  }
+  setLoadingId(null);
+};
 
   const removeProduct = (productId) => {
     Alert.alert(
@@ -763,6 +778,7 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
                 <TextInput
                   style={[styles.input, { flex: 1 }]}
                   placeholder="Qty"
+                  placeholderTextColor="#888"
                   value={v.quantity_value}
                   onChangeText={text => updateEditVariant(idx, 'quantity_value', text)}
                   
@@ -770,6 +786,7 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
                 <TextInput
                   style={[styles.input, { flex: 1, marginLeft: 5 }]}
                   placeholder="Price"
+                  placeholderTextColor="#888"
                   value={v.price}
                   onChangeText={text => updateEditVariant(idx, 'price', text)}
                   keyboardType="numeric"
@@ -777,6 +794,7 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
                 <TextInput
                   style={[styles.input, { flex: 1, marginLeft: 5 }]}
                   placeholder="MRP (optional)"
+                  placeholderTextColor="#888"
                   value={v.mrp}
                   onChangeText={text => updateEditVariant(idx, 'mrp', text)}
                   keyboardType="numeric"

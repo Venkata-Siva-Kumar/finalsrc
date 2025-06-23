@@ -85,7 +85,8 @@ ${Number(order.delivery_charge) > 0
 <b>Address:</b>
     ${order.deliveryAddress && typeof order.deliveryAddress === 'object' && !Array.isArray(order.deliveryAddress) ? `
       ${order.deliveryAddress.name || ''}, <b>${order.deliveryAddress.mobile || ''}</b>,
-      ${order.deliveryAddress.address || ''}, ${order.deliveryAddress.locality || ''}
+      ${order.deliveryAddress.address || ''}, 
+      ${order.deliveryAddress.locality || ''}
       ${order.deliveryAddress.city || ''}, ${order.deliveryAddress.state || ''},
       ${order.deliveryAddress.pincode || ''}, ${order.deliveryAddress.landmark || ''}` : 'No delivery address provided.'}
 ---------------------------------------------------

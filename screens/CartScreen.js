@@ -383,7 +383,7 @@ export default function CartScreen({ navigation, route }) {
     const res = await fetch(`${API_BASE_URL}/pincodes`);
     const validPincodes = await res.json();
     if (!Array.isArray(validPincodes) || !validPincodes.includes(pincode)) {
-      Alert.alert('Delivery Not Available', `Sorry, we do not deliver to pincode ${pincode}.`);
+      Alert.alert('Delivery Not Available', `Currently we are not delivering to pincode ${pincode}.`);
       return;
     }
   } catch (e) {

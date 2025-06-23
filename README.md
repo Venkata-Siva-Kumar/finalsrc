@@ -17,6 +17,7 @@ Expo
 npm install -g eas-cli
 eas build:configure
 eas build -p android --profile preview
+eas build -p android --profile production
 
 # APK STEPS: 
 To test implements code working as expected or to validate use teh below commands and genrate .apk file and validate the things , if things all are good then geneate .aab file and upload to appstore.

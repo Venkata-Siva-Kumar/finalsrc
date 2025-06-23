@@ -89,7 +89,7 @@ export default function OrderDetailsUserScreen({ route }) {
       <Text style={[styles.label, { marginTop: 20, marginBottom: 8, fontSize: 16 }]}>Price Details</Text>
       <View style={styles.priceDetailsBox}>
         <View style={styles.priceRow}>
-          <Text style={styles.priceLabel}>List price</Text>
+          <Text style={styles.priceLabel}>Original price</Text>
           <Text style={styles.strike}>₹{totalMRP.toFixed(2)}</Text>
         </View>
         <View style={styles.priceRow}>
@@ -97,7 +97,7 @@ export default function OrderDetailsUserScreen({ route }) {
           <Text>₹{totalSelling.toFixed(2)}</Text>
         </View>
         <View style={styles.priceRow}>
-          <Text style={styles.priceLabel}>Extra Discount</Text>
+          <Text style={styles.priceLabel}>Coupon Discount</Text>
           <Text style={{ color: 'green' }}>- ₹{couponDiscount.toFixed(2)}</Text>
         </View>
         <View style={styles.priceRow}>
