@@ -1278,7 +1278,12 @@ app.post('/forgot-password/send-otp', (req, res) => {
 
     // Reuse your OTP logic
     const otp = generateOTP();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min expiry
+
+    // --- FIX: Use IST and MySQL DATETIME format ---
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const expiresAtIST = new Date(now.getTime() + istOffset + 5 * 60 * 1000);
+    const expiresAt = expiresAtIST.toISOString().slice(0, 19).replace('T', ' ');
 
     db.query(
       `INSERT INTO user_otps (mobile, otp, expires_at) VALUES (?, ?, ?)
