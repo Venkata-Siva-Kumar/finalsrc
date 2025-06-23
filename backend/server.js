@@ -48,6 +48,8 @@ app.post('/signup', (req, res) => {
           [fname, lname, hashedPassword, gender, email || null, dob || null, mobile],
           err2 => {
             if (err2) return res.status(500).json({ message: 'Error reactivating user' });
+            // Delete OTP after successful reactivation
+            db.query('DELETE FROM user_otps WHERE mobile = ?', [mobile]);
             return res.json({ message: 'Account reactivated and updated successfully' });
           }
         );
@@ -62,6 +64,8 @@ app.post('/signup', (req, res) => {
         [fname, lname, mobile, hashedPassword, gender, email || null, dob || null],
         err => {
           if (err) return res.status(500).json({ message: 'Error inserting user' });
+          // Delete OTP after successful signup
+          db.query('DELETE FROM user_otps WHERE mobile = ?', [mobile]);
           res.json({ message: 'User registered successfully' });
         }
       );
