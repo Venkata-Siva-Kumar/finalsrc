@@ -1187,7 +1187,11 @@ app.post('/send-otp', async (req, res) => {
   if (!mobile) return res.status(400).json({ success: false, message: 'Mobile required' });
   console.log(`Sending OTP to mobile: ${mobile}`);
   const otp = generateOTP();
-  const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min expiry
+  // Calculate expiry in IST (Indian Standard Time)
+const now = new Date();
+const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
+const expiresAtIST = new Date(now.getTime() + istOffset + 5 * 60 * 1000); // 5 min from now in IST
+const expiresAt = expiresAtIST.toISOString().slice(0, 19).replace('T', ' '); // MySQL DATETIME format
 
   // Save OTP to DB (upsert)
   db.query(
