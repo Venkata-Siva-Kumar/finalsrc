@@ -139,7 +139,7 @@ export default function App() {
             <Stack.Screen name="Payment2" component={Payment} options={{ headerShown: true }} />
             <Stack.Screen name="AdminHome" component={AdminHomeScreen} options={{ headerShown: true }} />
             <Stack.Screen name="Orders" component={OrdersScreen} options={{ headerShown: true ,headerRight: () => <AppHeaderIcon />}} />
-            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ headerShown: true ,headerRight: () => <AppHeaderIcon />}} />  
+            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ headerShown: true }} />  
             <Stack.Screen name="ContactCenter" component={ContactCenterScreen} options={{ headerShown: true, title: "Contact Center",}} />
             <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} options={{ headerShown: true, title: "Order Details" }} /> 
             <Stack.Screen name="OrderDetailsUser" component={OrderDetailsUserScreen} options={{ headerShown: true, title: "Order Details" }} />

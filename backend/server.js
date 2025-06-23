@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
+const axios = require('axios'); // Add at the top if not present
 require('dotenv').config();
 
 const app = express();
@@ -1171,6 +1172,189 @@ app.put('/delivery-settings', (req, res) => {
     (err, result) => {
       if (err) return res.status(500).json({ error: 'Database error' });
       res.json({ success: true });
+    }
+  );
+});
+
+// Helper to generate random 5-digit OTP
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+// Send OTP via WhatsApp
+app.post('/send-otp', async (req, res) => {
+  const { mobile } = req.body;
+  if (!mobile) return res.status(400).json({ success: false, message: 'Mobile required' });
+  console.log(`Sending OTP to mobile: ${mobile}`);
+  const otp = generateOTP();
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min expiry
+
+  // Save OTP to DB (upsert)
+  db.query(
+    `INSERT INTO user_otps (mobile, otp, expires_at) VALUES (?, ?, ?)
+     ON DUPLICATE KEY UPDATE otp=?, expires_at=?`,
+    [mobile, otp, expiresAt, otp, expiresAt],
+    async (err) => {
+      if (err) return res.status(500).json({ success: false, message: 'DB error' });
+
+      // Send WhatsApp message via Facebook API
+      try {
+        await axios.post(
+          'https://graph.facebook.com/v22.0/721182311071916/messages',
+          {
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to: "91" + mobile, // WhatsApp expects country code
+            type: "template",
+            template: {
+              name: "otp_registration",
+              language: { code: "en_US" },
+              components: [
+                {
+                  type: "body",
+                  parameters: [
+                    { type: "text", text: otp },
+                    { type: "text", text: mobile }
+                  ]
+                },
+                {
+                  type: "button",
+                  sub_type: "url",
+                  index: "0",
+                  parameters: [
+                    { type: "text", text: otp }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer EAAbNG1p6zT0BO3BPXh1WzvghnU64pqOFd5ZBowZBJADzaruUf0PbTzSFxFMuUF4Jx1t3oqGsad48ZBFuAA5QngZA0a7Qy4eMqD2U22kvZCMDNBR251gJXnHagYPG72hgnZATdqBul4hU9itRp3r9pVWaFkQKo25f9o37x5zq44QlEWMQi5YdELObofAzcxcFLMBfZC1iyZBEaR9ghY7kFUBHM8hEqLi0e4Lj26Ce'
+            }
+          }
+        );
+        res.json({ success: true, message: 'OTP sent' });
+      } catch (e) {
+        console.error('WhatsApp API error:', e.response?.data || e.message);
+        res.status(500).json({ success: false, message: 'Failed to send OTP', error: e.response?.data || e.message });
+      }
+    }
+  );
+});
+
+// ...existing code...
+
+app.post('/verify-otp', (req, res) => {
+  const { mobile, otp } = req.body;
+  if (!mobile || !otp) return res.status(400).json({ success: false, message: 'Mobile and OTP required' });
+
+  db.query(
+    'SELECT * FROM user_otps WHERE mobile = ? AND otp = ? AND expires_at > NOW()',
+    [mobile, otp],
+    (err, rows) => {
+      if (err) return res.status(500).json({ success: false, message: 'DB error' });
+      if (!rows.length) return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+
+      // Mark OTP as verified, do NOT delete
+      db.query('UPDATE user_otps SET verified = 1 WHERE mobile = ?', [mobile]);
+      res.json({ success: true });
+    }
+  );
+});
+
+app.post('/forgot-password/send-otp', (req, res) => {
+  const { mobile } = req.body;
+  if (!mobile) return res.status(400).json({ success: false, message: 'Mobile required' });
+
+  db.query('SELECT * FROM users WHERE mobile = ? AND activity_status = "active"', [mobile], (err, results) => {
+    if (err) return res.status(500).json({ success: false, message: 'Database error' });
+    if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found or inactive' });
+
+    // Reuse your OTP logic
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min expiry
+
+    db.query(
+      `INSERT INTO user_otps (mobile, otp, expires_at) VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE otp=?, expires_at=?`,
+      [mobile, otp, expiresAt, otp, expiresAt],
+      async (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'DB error' });
+
+        try {
+          await axios.post(
+            'https://graph.facebook.com/v22.0/721182311071916/messages',
+            {
+              messaging_product: "whatsapp",
+              recipient_type: "individual",
+              to: "91" + mobile,
+              type: "template",
+              template: {
+                name: "otp_registration",
+                language: { code: "en_US" },
+                components: [
+                  {
+                    type: "body",
+                    parameters: [
+                      { type: "text", text: otp },
+                      { type: "text", text: mobile }
+                    ]
+                  },
+                  {
+                    type: "button",
+                    sub_type: "url",
+                    index: "0",
+                    parameters: [
+                      { type: "text", text: otp }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer EAAbNG1p6zT0BO3BPXh1WzvghnU64pqOFd5ZBowZBJADzaruUf0PbTzSFxFMuUF4Jx1t3oqGsad48ZBFuAA5QngZA0a7Qy4eMqD2U22kvZCMDNBR251gJXnHagYPG72hgnZATdqBul4hU9itRp3r9pVWaFkQKo25f9o37x5zq44QlEWMQi5YdELObofAzcxcFLMBfZC1iyZBEaR9ghY7kFUBHM8hEqLi0e4Lj26Ce'
+              }
+            }
+          );
+          res.json({ success: true, message: 'OTP sent' });
+        } catch (e) {
+          console.error('WhatsApp API error:', e.response?.data || e.message);
+          res.status(500).json({ success: false, message: 'Failed to send OTP', error: e.response?.data || e.message });
+        }
+      }
+    );
+  });
+});
+
+app.post('/forgot-password/reset', async (req, res) => {
+  const { mobile, otp, newPassword } = req.body;
+  if (!mobile || !otp || !newPassword) {
+    return res.status(400).json({ success: false, message: 'Missing fields' });
+  }
+
+  // Verify OTP and check if verified
+  db.query(
+    'SELECT * FROM user_otps WHERE mobile = ? AND otp = ? AND expires_at > NOW() AND verified = 1',
+    [mobile, otp],
+    async (err, rows) => {
+      if (err) return res.status(500).json({ success: false, message: 'DB error' });
+      if (!rows.length) return res.status(400).json({ success: false, message: 'OTP not verified or expired' });
+
+      // Update password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      db.query(
+        'UPDATE users SET password = ? WHERE mobile = ?',
+        [hashedPassword, mobile],
+        (err2, result) => {
+          if (err2) return res.status(500).json({ success: false, message: 'Failed to update password' });
+          db.query('DELETE FROM user_otps WHERE mobile = ?', [mobile]);
+          res.json({ success: true, message: 'Password updated successfully' });
+        }
+      );
     }
   );
 });
