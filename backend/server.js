@@ -1185,22 +1185,21 @@ function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// Send OTP via WhatsApp
 app.post('/send-otp', async (req, res) => {
   const { mobile } = req.body;
   if (!mobile) return res.status(400).json({ success: false, message: 'Mobile required' });
-  console.log(`Sending OTP to mobile: ${mobile}`);
+
   const otp = generateOTP();
   // Calculate expiry in IST (Indian Standard Time)
-const now = new Date();
-const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
-const expiresAtIST = new Date(now.getTime() + istOffset + 5 * 60 * 1000); // 5 min from now in IST
-const expiresAt = expiresAtIST.toISOString().slice(0, 19).replace('T', ' '); // MySQL DATETIME format
+  const now = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const expiresAtIST = new Date(now.getTime() + istOffset + 5 * 60 * 1000);
+  const expiresAt = expiresAtIST.toISOString().slice(0, 19).replace('T', ' ');
 
-  // Save OTP to DB (upsert)
+  // Save OTP to DB (upsert, reset verified)
   db.query(
-    `INSERT INTO user_otps (mobile, otp, expires_at) VALUES (?, ?, ?)
-     ON DUPLICATE KEY UPDATE otp=?, expires_at=?`,
+    `INSERT INTO user_otps (mobile, otp, expires_at, verified) VALUES (?, ?, ?, 0)
+     ON DUPLICATE KEY UPDATE otp=?, expires_at=?, verified=0`,
     [mobile, otp, expiresAt, otp, expiresAt],
     async (err) => {
       if (err) return res.status(500).json({ success: false, message: 'DB error' });
@@ -1212,7 +1211,7 @@ const expiresAt = expiresAtIST.toISOString().slice(0, 19).replace('T', ' '); // 
           {
             messaging_product: "whatsapp",
             recipient_type: "individual",
-            to: "91" + mobile, // WhatsApp expects country code
+            to: "91" + mobile,
             type: "template",
             template: {
               name: "otp_registration",
@@ -1239,7 +1238,7 @@ const expiresAt = expiresAtIST.toISOString().slice(0, 19).replace('T', ' '); // 
           {
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': 'Bearer EAAbNG1p6zT0BO3BPXh1WzvghnU64pqOFd5ZBowZBJADzaruUf0PbTzSFxFMuUF4Jx1t3oqGsad48ZBFuAA5QngZA0a7Qy4eMqD2U22kvZCMDNBR251gJXnHagYPG72hgnZATdqBul4hU9itRp3r9pVWaFkQKo25f9o37x5zq44QlEWMQi5YdELObofAzcxcFLMBfZC1iyZBEaR9ghY7kFUBHM8hEqLi0e4Lj26Ce'
+              'Authorization': 'Bearer EAAbNG1p6zT0BO0wpdtzJFesTyGSw0vNZCH9g9ZC1iqoz79P9caGocXD2mOyZAtLGaWXoapT6VLFY0AUfX0Xb5ZBAprWiHSL5Bt9QJU0MIVqZBSD47ikZCkcDFUCbJvVDZB9UTowC0U4QJDZA5Ctuu4ddRZB2BXZCa4izfcNKEZAbzGsqxqdUTwtaBunZCgik6T8ZCQuoBYUzZBhdWhGZCKaapVgKQkDIBfqZB6gONZAkPc4YR'
             }
           }
         );
@@ -1252,8 +1251,6 @@ const expiresAt = expiresAtIST.toISOString().slice(0, 19).replace('T', ' '); // 
   );
 });
 
-// ...existing code...
-
 app.post('/verify-otp', (req, res) => {
   const { mobile, otp } = req.body;
   if (!mobile || !otp) return res.status(400).json({ success: false, message: 'Mobile and OTP required' });
@@ -1265,9 +1262,11 @@ app.post('/verify-otp', (req, res) => {
       if (err) return res.status(500).json({ success: false, message: 'DB error' });
       if (!rows.length) return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
 
-      // Mark OTP as verified, do NOT delete
-      db.query('UPDATE user_otps SET verified = 1 WHERE mobile = ?', [mobile]);
-      res.json({ success: true });
+      // Mark OTP as verified and delete it
+      db.query('DELETE FROM user_otps WHERE mobile = ?', [mobile], (err2) => {
+        if (err2) return res.status(500).json({ success: false, message: 'Failed to delete OTP' });
+        res.json({ success: true });
+      });
     }
   );
 });
@@ -1280,18 +1279,16 @@ app.post('/forgot-password/send-otp', (req, res) => {
     if (err) return res.status(500).json({ success: false, message: 'Database error' });
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found or inactive' });
 
-    // Reuse your OTP logic
     const otp = generateOTP();
-
-    // --- FIX: Use IST and MySQL DATETIME format ---
+    // Calculate expiry in IST
     const now = new Date();
     const istOffset = 5.5 * 60 * 60 * 1000;
     const expiresAtIST = new Date(now.getTime() + istOffset + 5 * 60 * 1000);
     const expiresAt = expiresAtIST.toISOString().slice(0, 19).replace('T', ' ');
 
     db.query(
-      `INSERT INTO user_otps (mobile, otp, expires_at) VALUES (?, ?, ?)
-       ON DUPLICATE KEY UPDATE otp=?, expires_at=?`,
+      `INSERT INTO user_otps (mobile, otp, expires_at, verified) VALUES (?, ?, ?, 0)
+       ON DUPLICATE KEY UPDATE otp=?, expires_at=?, verified=0`,
       [mobile, otp, expiresAt, otp, expiresAt],
       async (err) => {
         if (err) return res.status(500).json({ success: false, message: 'DB error' });
@@ -1329,7 +1326,7 @@ app.post('/forgot-password/send-otp', (req, res) => {
             {
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer EAAbNG1p6zT0BO3BPXh1WzvghnU64pqOFd5ZBowZBJADzaruUf0PbTzSFxFMuUF4Jx1t3oqGsad48ZBFuAA5QngZA0a7Qy4eMqD2U22kvZCMDNBR251gJXnHagYPG72hgnZATdqBul4hU9itRp3r9pVWaFkQKo25f9o37x5zq44QlEWMQi5YdELObofAzcxcFLMBfZC1iyZBEaR9ghY7kFUBHM8hEqLi0e4Lj26Ce'
+                'Authorization': 'Bearer EAAbNG1p6zT0BO0wpdtzJFesTyGSw0vNZCH9g9ZC1iqoz79P9caGocXD2mOyZAtLGaWXoapT6VLFY0AUfX0Xb5ZBAprWiHSL5Bt9QJU0MIVqZBSD47ikZCkcDFUCbJvVDZB9UTowC0U4QJDZA5Ctuu4ddRZB2BXZCa4izfcNKEZAbzGsqxqdUTwtaBunZCgik6T8ZCQuoBYUzZBhdWhGZCKaapVgKQkDIBfqZB6gONZAkPc4YR'
               }
             }
           );
@@ -1364,6 +1361,7 @@ app.post('/forgot-password/reset', async (req, res) => {
         [hashedPassword, mobile],
         (err2, result) => {
           if (err2) return res.status(500).json({ success: false, message: 'Failed to update password' });
+          // Delete OTP after successful reset
           db.query('DELETE FROM user_otps WHERE mobile = ?', [mobile]);
           res.json({ success: true, message: 'Password updated successfully' });
         }
