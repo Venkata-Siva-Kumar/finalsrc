@@ -1262,9 +1262,9 @@ app.post('/verify-otp', (req, res) => {
       if (err) return res.status(500).json({ success: false, message: 'DB error' });
       if (!rows.length) return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
 
-      // Mark OTP as verified and delete it
-      db.query('DELETE FROM user_otps WHERE mobile = ?', [mobile], (err2) => {
-        if (err2) return res.status(500).json({ success: false, message: 'Failed to delete OTP' });
+      // Mark OTP as verified (do not delete here)
+      db.query('UPDATE user_otps SET verified = 1 WHERE mobile = ?', [mobile], (err2) => {
+        if (err2) return res.status(500).json({ success: false, message: 'Failed to verify OTP' });
         res.json({ success: true });
       });
     }
