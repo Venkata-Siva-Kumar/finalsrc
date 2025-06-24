@@ -1238,7 +1238,7 @@ app.post('/send-otp', async (req, res) => {
           {
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': 'Bearer EAAbNG1p6zT0BO0wpdtzJFesTyGSw0vNZCH9g9ZC1iqoz79P9caGocXD2mOyZAtLGaWXoapT6VLFY0AUfX0Xb5ZBAprWiHSL5Bt9QJU0MIVqZBSD47ikZCkcDFUCbJvVDZB9UTowC0U4QJDZA5Ctuu4ddRZB2BXZCa4izfcNKEZAbzGsqxqdUTwtaBunZCgik6T8ZCQuoBYUzZBhdWhGZCKaapVgKQkDIBfqZB6gONZAkPc4YR'
+              'Authorization': 'Bearer EAAbNG1p6zT0BO5ZBtuHv6pkHKRyJDj86cxWo7ej6TVw4VzTrVTkOXBBUhkEdzkILLGZBDc8Ru5GDD7bQKzzU926htxSmdo9izfSMhSyISLX4ZAQRvtiT2ofWZB1Xw8KNzXsmZCo0TdKO4ltCORya4reFU4HTeNNicvEGhxXAIcTpsW9tzRPI9gJHXJ0dx8z7WCfH9HYrfpoKJgwvp2MG9F4c5jjbajnE72gUsFss7EgZDZD'
             }
           }
         );
@@ -1326,7 +1326,7 @@ app.post('/forgot-password/send-otp', (req, res) => {
             {
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer EAAbNG1p6zT0BO0wpdtzJFesTyGSw0vNZCH9g9ZC1iqoz79P9caGocXD2mOyZAtLGaWXoapT6VLFY0AUfX0Xb5ZBAprWiHSL5Bt9QJU0MIVqZBSD47ikZCkcDFUCbJvVDZB9UTowC0U4QJDZA5Ctuu4ddRZB2BXZCa4izfcNKEZAbzGsqxqdUTwtaBunZCgik6T8ZCQuoBYUzZBhdWhGZCKaapVgKQkDIBfqZB6gONZAkPc4YR'
+                'Authorization': 'Bearer EAAbNG1p6zT0BO5ZBtuHv6pkHKRyJDj86cxWo7ej6TVw4VzTrVTkOXBBUhkEdzkILLGZBDc8Ru5GDD7bQKzzU926htxSmdo9izfSMhSyISLX4ZAQRvtiT2ofWZB1Xw8KNzXsmZCo0TdKO4ltCORya4reFU4HTeNNicvEGhxXAIcTpsW9tzRPI9gJHXJ0dx8z7WCfH9HYrfpoKJgwvp2MG9F4c5jjbajnE72gUsFss7EgZDZD'
               }
             }
           );
