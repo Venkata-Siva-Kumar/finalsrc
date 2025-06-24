@@ -682,7 +682,7 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
               </View>
               <View style={styles.infoColumn}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Text style={styles.name}>{item.name}</Text>
+                  <Text style={[styles.name, { flex: 1, flexWrap: 'wrap', flexShrink: 1 }]}>{item.name}</Text>
                   {/* Buttons in a column at the right of the name */}
                   <View style={{ flexDirection: 'column', marginLeft: 12 }}>
                     <TouchableOpacity
