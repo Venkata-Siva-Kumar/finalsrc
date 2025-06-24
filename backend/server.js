@@ -1274,9 +1274,13 @@ app.post('/verify-otp', (req, res) => {
 app.post('/forgot-password/send-otp', (req, res) => {
   const { mobile } = req.body;
   if (!mobile) return res.status(400).json({ success: false, message: 'Mobile required' });
-
+  console.log('Received mobile:', mobile);
   db.query('SELECT * FROM users WHERE mobile = ? AND activity_status = "active"', [mobile], (err, results) => {
+    console.log('Results:', err);
     if (err) return res.status(500).json({ success: false, message: 'Database error' });
+    console.log('Results:', results);
+    console.log('Results length:', results.length);
+    
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found or inactive' });
 
     const otp = generateOTP();
