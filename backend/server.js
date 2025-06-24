@@ -1275,7 +1275,7 @@ app.post('/forgot-password/send-otp', (req, res) => {
   const { mobile } = req.body;
   if (!mobile) return res.status(400).json({ success: false, message: 'Mobile required' });
   console.log('Received mobile:', mobile);
-  db.query('SELECT * FROM users WHERE mobile = ? AND activity_status = "active"', [mobile], (err, results) => {
+  db.query('SELECT * FROM users WHERE mobile = ? ', [mobile], (err, results) => {
     console.log('Results:', err);
     if (err) return res.status(500).json({ success: false, message: 'Database error' });
     console.log('Results:', results);
