@@ -127,7 +127,7 @@ export default function SignupScreen({ navigation }) {
 
     setOtpLoading(true);
 
-    // 1. Check user status before sending OTP
+    // Direct signup without OTP
     axios.get(`${API_BASE_URL}/user`, { params: { mobile } })
       .then(res => {
         const user = res.data.user;
@@ -135,17 +135,16 @@ export default function SignupScreen({ navigation }) {
           setOtpLoading(false);
           Alert.alert('User Exists', 'User already exists with this mobile number.');
         } else {
-          // User is inactive or does not exist, send OTP
-          axios.post(`${API_BASE_URL}/send-otp`, { mobile })
-            .then(() => {
-              setOtpSent(true);
-              setOtpModalVisible(true); // Show OTP modal
-              setStep(2);
+          axios.post(`${API_BASE_URL}/signup`, { fname, lname, mobile, password, gender, email, dob })
+            .then(res => {
               setOtpLoading(false);
+              Alert.alert('Success', res.data.message, [
+                { text: 'OK', onPress: () => navigation.replace('Login') }
+              ]);
             })
             .catch(err => {
               setOtpLoading(false);
-              Alert.alert('Failed to send OTP', err.response?.data?.message || 'Try again');
+              Alert.alert('Signup Failed', err.response?.data?.message || 'Something went wrong');
             });
         }
       })

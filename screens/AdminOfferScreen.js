@@ -14,6 +14,7 @@ function OffersTab() {
   const [maxDiscount, setMaxDiscount] = useState('');
   const [offers, setOffers] = useState([]);
   const [editingId, setEditingId] = useState(null);
+  const scrollRef = React.useRef(null); // Add this ref
 
   // Format input as dd-mm-yyyy with auto hyphens
   function handleDateInput(text, setter) {
@@ -125,6 +126,10 @@ function OffersTab() {
     setMaxCart(String(offer.max_cart_value));
     setDiscountPercent(String(offer.discount_percent));
     setMaxDiscount(offer.max_discount ? String(offer.max_discount) : '');
+    // Scroll to top when editing
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({ y: 0, animated: true });
+    }
   };
 
   // Cancel edit
@@ -146,7 +151,7 @@ function OffersTab() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={styles.container} ref={scrollRef}>
       <Text style={styles.title}>{editingId ? 'Edit Offer' : 'Create New Offer'}</Text>
       <TextInput
         style={styles.input}
