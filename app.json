@@ -14,14 +14,11 @@
         "ITSAppUsesNonExemptEncryption": false
       }
     },
-    "plugins": [
-      "expo-localization"
-    ],
     "extra": {
       "eas": {
-        "projectId": "fe84162a-054e-4c2a-90cd-ba38b679d180"
+        "projectId": "842dff81-fec9-4466-a35b-8d9997215808"
       }
     },
-    "owner": "siva_kumar_mariyala"
+    "owner": "robber_nithin"
   }
 }

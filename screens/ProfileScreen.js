@@ -315,7 +315,7 @@ export default function ProfileScreen({ route, navigation }) {
         <TextInput
           placeholder="Password"
           placeholderTextColor="#888"
-          style={styles.input}
+          style={[styles.input, { color: '#222' }]}
           value={deletePassword}
           onChangeText={setDeletePassword}
           secureTextEntry={!deletePasswordVisible}
@@ -335,7 +335,7 @@ export default function ProfileScreen({ route, navigation }) {
         <TextInput
           placeholder="Confirm Password"
           placeholderTextColor="#888"
-          style={styles.input}
+          style={[styles.input, { color: '#222' }]}
           value={deleteConfirmPassword}
           onChangeText={setDeleteConfirmPassword}
           secureTextEntry={!deleteConfirmPasswordVisible}
