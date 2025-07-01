@@ -1,6 +1,4 @@
 const TERMS_TEXT = `
-Terms and Conditions
-
 1. Introduction
 By using this app, you agree to these Terms and Conditions. Please read them carefully before registering or using our services.
 

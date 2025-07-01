@@ -26,6 +26,8 @@ import OrderDetailsScreen from './screens/OrderDetailsScreen';
 import OrderDetailsUserScreen from './screens/OrderDetailsUserScreen';
 import BannerTab from './screens/BannerTab'; // <-- Import your BannerTab
 import AdminOfferScreen from './screens/AdminOfferScreen';  
+import TermsScreen from './screens/TermsScreen';
+
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
@@ -143,6 +145,7 @@ export default function App() {
             <Stack.Screen name="ContactCenter" component={ContactCenterScreen} options={{ headerShown: true, title: "Contact Center",}} />
             <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} options={{ headerShown: true, title: "Order Details" }} /> 
             <Stack.Screen name="OrderDetailsUser" component={OrderDetailsUserScreen} options={{ headerShown: true, title: "Order Details" }} />
+            <Stack.Screen name="Terms" component={TermsScreen} options={{ headerShown: true,title: 'Terms and Conditions' }} />
           </Stack.Navigator>
         </NavigationContainer>
       </CartProvider>

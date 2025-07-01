@@ -1,9 +1,8 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, StyleSheet, Platform, ScrollView, Modal } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, StyleSheet, Platform, ScrollView } from 'react-native';
 import axios from 'axios';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import TERMS_TEXT from './TermsText';
 import { API_BASE_URL } from '../config';
 
 function formatDateToDDMMYYYY(date) {
@@ -14,17 +13,14 @@ function formatDateToDDMMYYYY(date) {
   return `${day}-${month}-${year}`;
 }
 
-// Improved: Helper to convert dd-mm-yyyy to Date object
 function parseDDMMYYYYtoDate(str) {
   if (!str || typeof str !== 'string') return null;
   const [day, month, year] = str.split('-').map(Number);
-  // Check for valid numbers and valid date
   if (
     !Number.isInteger(day) || !Number.isInteger(month) || !Number.isInteger(year) ||
     day < 1 || day > 31 || month < 1 || month > 12 || year < 1900
   ) return null;
   const date = new Date(year, month - 1, day);
-  // Check if the date is valid (e.g., not 31 Feb)
   if (
     date.getFullYear() !== year ||
     date.getMonth() !== month - 1 ||
@@ -34,7 +30,6 @@ function parseDDMMYYYYtoDate(str) {
 }
 
 function isAtLeast18(dob) {
-  // dob is expected as dd-mm-yyyy string
   const birthDate = parseDDMMYYYYtoDate(dob);
   if (!birthDate || isNaN(birthDate.getTime())) return false;
   const today = new Date();
@@ -46,7 +41,7 @@ function isAtLeast18(dob) {
   return age >= 18;
 }
 
-export default function SignupScreen({ navigation }) {
+export default function SignupScreen({ navigation, route }) {
   const [fname, setFname] = useState('');
   const [lname, setLname] = useState('');
   const [mobile, setMobile] = useState('');
@@ -60,15 +55,7 @@ export default function SignupScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [showTermsModal, setShowTermsModal] = useState(false);
-  const [termsScrolledToEnd, setTermsScrolledToEnd] = useState(false);
-  const [step, setStep] = useState(1); // 1: form, 2: otp
-  const [otp, setOtp] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
-  const [otpModalVisible, setOtpModalVisible] = useState(false);
-  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
-  const otpInputs = Array.from({ length: 6 }, () => useRef(null));
 
   const onChange = (event, selectedDate) => {
     setShowPicker(false);
@@ -154,58 +141,12 @@ export default function SignupScreen({ navigation }) {
       });
   };
 
-  const handleOtpDigitChange = (value, idx) => {
-    if (!/^\d*$/.test(value)) return; // Only digits
-    const newOtp = [...otpDigits];
-    newOtp[idx] = value;
-    setOtpDigits(newOtp);
-    if (value && idx < 5) {
-      otpInputs[idx + 1].current.focus();
+  useEffect(() => {
+    if (route.params?.acceptedTerms) {
+      setAcceptedTerms(true);
+      navigation.setParams({ acceptedTerms: false });
     }
-    if (!value && idx > 0) {
-      otpInputs[idx - 1].current.focus();
-    }
-  };
-
-  const handleOtpValidate = () => {
-    const otpValue = otpDigits.join('');
-    if (otpValue.length !== 6) {
-      Alert.alert('Error', 'Enter 6-digit OTP');
-      return;
-    }
-    setOtpLoading(true);
-    axios.post(`${API_BASE_URL}/verify-otp`, { mobile, otp: otpValue })
-      .then(() => {
-        // Now do actual signup
-        axios.post(`${API_BASE_URL}/signup`, { fname, lname, mobile, password, gender, email, dob })
-          .then(res => {
-            setOtpLoading(false);
-            setOtpModalVisible(false);
-            Alert.alert('Success', res.data.message, [
-              { text: 'OK', onPress: () => navigation.replace('Login') }
-            ]);
-          })
-          .catch(err => {
-            setOtpLoading(false);
-            Alert.alert('Signup Failed', err.response?.data?.message || 'Something went wrong');
-          });
-      })
-      .catch(err => {
-        setOtpLoading(false);
-        Alert.alert('OTP Failed', err.response?.data?.message || 'Invalid OTP');
-      });
-  };
-
-  const handleOtpResend = () => {
-    handleSignup();
-    setOtpDigits(['', '', '', '', '', '']);
-  };
-
-  const handleOtpCancel = () => {
-    setOtpModalVisible(false);
-    setOtpDigits(['', '', '', '', '', '']);
-    setStep(1);
-  };
+  }, [route.params?.acceptedTerms]);
 
   return (
     <ScrollView>
@@ -357,7 +298,6 @@ export default function SignupScreen({ navigation }) {
               maxLength={10}
               keyboardType="number-pad"
               onChangeText={text => {
-                // Remove non-digits and limit to 8 digits
                 let cleaned = text.replace(/[^0-9]/g, '').slice(0, 8);
                 let formatted = '';
                 if (cleaned.length <= 2) {
@@ -412,7 +352,7 @@ export default function SignupScreen({ navigation }) {
               I accept the{' '}
               <Text
                 style={{ color: '#0066cc', textDecorationLine: 'underline' }}
-                onPress={() => setShowTermsModal(true)}
+                onPress={() => navigation.navigate('Terms')}
               >
                 Terms and Conditions
               </Text>
@@ -425,171 +365,7 @@ export default function SignupScreen({ navigation }) {
           <TouchableOpacity onPress={() => navigation.navigate('Login')}>
             <Text style={styles.link}>Already have an account? Login</Text>
           </TouchableOpacity>
-
         </ScrollView>
-        {showTermsModal && (
-          <View style={{
-            position: 'absolute',
-            top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.4)',
-            justifyContent: 'flex-start',
-            alignItems: 'center',
-            zIndex: 10
-          }}>
-            <View style={{
-              backgroundColor: '#fff',
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              width: '100%',
-              height: '100%',
-              padding: 24,
-              paddingBottom: 32,
-              elevation: 5,
-              justifyContent: 'flex-start'
-            }}>
-              <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 12, color: '#0066cc', textAlign: 'center' }}>
-                Terms and Conditions
-              </Text>
-              <ScrollView
-                style={{ maxHeight: '100%', marginBottom: 20 }}
-                onScroll={({ nativeEvent }) => {
-                  const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
-                  if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 20) {
-                    setTermsScrolledToEnd(true);
-                  }
-                }}
-                scrollEventThrottle={16}
-                showsVerticalScrollIndicator={true}
-              >
-                <Text style={{ fontSize: 14, color: '#333' }}>
-                  {TERMS_TEXT}
-                </Text>
-              </ScrollView>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <TouchableOpacity
-                  style={{
-                    flex: 1,
-                    backgroundColor: '#eee',
-                    paddingVertical: 12,
-                    borderRadius: 8,
-                    marginRight: 8,
-                    alignItems: 'center'
-                  }}
-                  onPress={() => {
-                    setShowTermsModal(false);
-                    setTermsScrolledToEnd(false);
-                  }}
-                >
-                  <Text style={{ color: '#333', fontWeight: 'bold' }}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={{
-                    flex: 1,
-                    backgroundColor: termsScrolledToEnd ? '#28a745' : '#b5e0c7',
-                    paddingVertical: 12,
-                    borderRadius: 8,
-                    marginLeft: 8,
-                    alignItems: 'center'
-                  }}
-                  disabled={!termsScrolledToEnd}
-                  onPress={() => {
-                    setAcceptedTerms(true);
-                    setShowTermsModal(false);
-                    setTermsScrolledToEnd(false);
-                  }}
-                >
-                  <Text style={{ color: '#fff', fontWeight: 'bold' }}>Agree</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        )}
-
-        <Modal
-  visible={otpModalVisible}
-  transparent
-  animationType="fade"
-  onRequestClose={handleOtpCancel}
->
-  <View style={{
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    alignItems: 'center'
-  }}>
-    <View style={{
-      backgroundColor: '#fff',
-      borderRadius: 12,
-      padding: 32,
-      width: '90%',
-      alignItems: 'center',
-      elevation: 8
-    }}>
-      <Text style={{ fontWeight: 'bold', fontSize: 18, color: '#444', marginBottom: 10, textAlign: 'center' }}>
-        Please enter the One-Time Password to verify your account
-      </Text>
-      <Text style={{ fontSize: 15, color: '#888', marginBottom: 24, textAlign: 'center' }}>
-        A One-Time Password has been sent to {mobile.replace(/^(\d{2})(\d{4})(\d{2})$/, '$1****$3')}
-      </Text>
-      <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 28 }}>
-        {otpDigits.map((digit, idx) => (
-          <TextInput
-            key={idx}
-            ref={otpInputs[idx]}
-            style={{
-              width: 38,
-              height: 48,
-              borderWidth: 1.5,
-              borderColor: '#ddd',
-              borderRadius: 8,
-              marginHorizontal: 6,
-              textAlign: 'center',
-              fontSize: 22,
-              backgroundColor: '#f7f7f7',
-              paddingVertical: 0,
-              textAlignVertical: 'center'
-            }}
-            keyboardType="number-pad"
-            maxLength={1}
-            value={digit}
-            onChangeText={value => handleOtpDigitChange(value, idx)}
-            autoFocus={idx === 0}
-            returnKeyType={idx === 5 ? 'done' : 'next'}
-            blurOnSubmit={false}
-          />
-        ))}
-      </View>
-      <TouchableOpacity
-        style={{
-          backgroundColor: '#ff6b6b',
-          borderRadius: 8,
-          paddingVertical: 12,
-          paddingHorizontal: 32,
-          marginBottom: 18,
-          marginTop: 8,
-          width: '100%',
-          alignItems: 'center'
-        }}
-        onPress={handleOtpValidate}
-        disabled={otpLoading}
-      >
-        <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>
-          {otpLoading ? 'Validating...' : 'Validate'}
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={handleOtpResend} disabled={otpLoading}>
-        <Text style={{ color: '#444', fontSize: 14, marginBottom: 8, textAlign: 'center', textDecorationLine: 'underline' }}>
-          Resend One-Time Password
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={handleOtpCancel}>
-        <Text style={{ color: '#888', fontSize: 13, textAlign: 'center', textDecorationLine: 'underline' }}>
-          Cancel
-        </Text>
-      </TouchableOpacity>
-    </View>
-  </View>
-</Modal>
       </KeyboardAvoidingView>
     </ScrollView>
   );
