@@ -451,7 +451,7 @@ export default function SignupScreen({ navigation }) {
                 Terms and Conditions
               </Text>
               <ScrollView
-                style={{ flex: 1, marginBottom: 20 }}
+                style={{ maxHeight: '100%', marginBottom: 20 }}
                 onScroll={({ nativeEvent }) => {
                   const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
                   if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 20) {

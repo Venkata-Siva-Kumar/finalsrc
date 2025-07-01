@@ -105,7 +105,7 @@ export default function OrderDetailsUserScreen({ route }) {
           <Text>₹{specialPrice.toFixed(2)}</Text>
         </View>
         <View style={styles.priceRow}>
-          <Text style={styles.priceLabel}>Handling Fee</Text>
+          <Text style={styles.priceLabel}>Delivery Fee</Text>
           <Text style={{ color: deliveryCharge > 0 ? '#333' : 'green', textDecorationLine: deliveryCharge > 0 ? 'none' : 'line-through' }}>
             {deliveryCharge > 0 ? `₹${deliveryCharge.toFixed(2)}` : 'Free'}
           </Text>
