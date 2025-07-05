@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, StyleSheet, Platform, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, StyleSheet, Platform, ScrollView, Modal } from 'react-native';
 import axios from 'axios';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -55,7 +55,10 @@ export default function SignupScreen({ navigation, route }) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [otpModalVisible, setOtpModalVisible] = useState(false);
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [otpLoading, setOtpLoading] = useState(false);
+  const otpInputs = Array.from({ length: 6 }, () => useRef(null));
 
   const onChange = (event, selectedDate) => {
     setShowPicker(false);
@@ -64,6 +67,71 @@ export default function SignupScreen({ navigation, route }) {
     }
   };
 
+  // OTP digit change handler
+  const handleOtpDigitChange = (value, idx) => {
+    if (!/^\d*$/.test(value)) return; // Only digits
+    const newOtp = [...otpDigits];
+    newOtp[idx] = value;
+    setOtpDigits(newOtp);
+    if (value && idx < 5) {
+      otpInputs[idx + 1].current.focus();
+    }
+    if (!value && idx > 0) {
+      otpInputs[idx - 1].current.focus();
+    }
+  };
+
+  // OTP validation handler
+  const handleOtpValidate = () => {
+    const otpValue = otpDigits.join('');
+    if (otpValue.length !== 6) {
+      Alert.alert('Error', 'Enter 6-digit OTP');
+      return;
+    }
+    setOtpLoading(true);
+    axios.post(`${API_BASE_URL}/verify-otp`, { mobile, otp: otpValue })
+      .then(() => {
+        // Now do actual signup
+        axios.post(`${API_BASE_URL}/signup`, { fname, lname, mobile, password, gender, email, dob })
+          .then(res => {
+            setOtpLoading(false);
+            setOtpModalVisible(false);
+            Alert.alert('Success', res.data.message, [
+              { text: 'OK', onPress: () => navigation.replace('Login') }
+            ]);
+          })
+          .catch(err => {
+            setOtpLoading(false);
+            Alert.alert('Signup Failed', err.response?.data?.message || 'Something went wrong');
+          });
+      })
+      .catch(err => {
+        setOtpLoading(false);
+        Alert.alert('OTP Failed', err.response?.data?.message || 'Invalid OTP');
+      });
+  };
+
+  // OTP resend handler
+  const handleOtpResend = () => {
+    setOtpLoading(true);
+    axios.post(`${API_BASE_URL}/send-otp`, { mobile })
+      .then(() => {
+        setOtpDigits(['', '', '', '', '', '']);
+        setOtpLoading(false);
+      })
+      .catch(err => {
+        setOtpLoading(false);
+        Alert.alert('Failed to resend OTP', err.response?.data?.message || 'Try again');
+      });
+  };
+
+  // OTP cancel handler
+  const handleOtpCancel = () => {
+    setOtpModalVisible(false);
+    setOtpDigits(['', '', '', '', '', '']);
+  };
+
+  // Modified handleSignup to send OTP first
   const handleSignup = () => {
     const requiredFields = { fname, lname, mobile, password, confirmPassword, gender, dob };
     let newTouched = {};
@@ -114,7 +182,6 @@ export default function SignupScreen({ navigation, route }) {
 
     setOtpLoading(true);
 
-    // Direct signup without OTP
     axios.get(`${API_BASE_URL}/user`, { params: { mobile } })
       .then(res => {
         const user = res.data.user;
@@ -122,16 +189,15 @@ export default function SignupScreen({ navigation, route }) {
           setOtpLoading(false);
           Alert.alert('User Exists', 'User already exists with this mobile number.');
         } else {
-          axios.post(`${API_BASE_URL}/signup`, { fname, lname, mobile, password, gender, email, dob })
-            .then(res => {
+          // Send OTP
+          axios.post(`${API_BASE_URL}/send-otp`, { mobile })
+            .then(() => {
+              setOtpModalVisible(true);
               setOtpLoading(false);
-              Alert.alert('Success', res.data.message, [
-                { text: 'OK', onPress: () => navigation.replace('Login') }
-              ]);
             })
             .catch(err => {
               setOtpLoading(false);
-              Alert.alert('Signup Failed', err.response?.data?.message || 'Something went wrong');
+              Alert.alert('Failed to send OTP', err.response?.data?.message || 'Try again');
             });
         }
       })
@@ -331,7 +397,7 @@ export default function SignupScreen({ navigation, route }) {
 
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
             <TouchableOpacity
-              onPress={() => setAcceptedTerms(!acceptedTerms)}
+              onPress={() => setAcceptedTerms(v => !v)}
               style={{
                 width: 22,
                 height: 22,
@@ -352,7 +418,9 @@ export default function SignupScreen({ navigation, route }) {
               I accept the{' '}
               <Text
                 style={{ color: '#0066cc', textDecorationLine: 'underline' }}
-                onPress={() => navigation.navigate('Terms')}
+                onPress={() => navigation.navigate('Terms', {
+                  onAgree: () => setAcceptedTerms(true)
+                })}
               >
                 Terms and Conditions
               </Text>
@@ -366,6 +434,93 @@ export default function SignupScreen({ navigation, route }) {
             <Text style={styles.link}>Already have an account? Login</Text>
           </TouchableOpacity>
         </ScrollView>
+
+        {/* OTP Modal */}
+        <Modal
+          visible={otpModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={handleOtpCancel}
+        >
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.4)',
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}>
+            <View style={{
+              backgroundColor: '#fff',
+              borderRadius: 12,
+              padding: 32,
+              width: '90%',
+              alignItems: 'center',
+              elevation: 8
+            }}>
+              <Text style={{ fontWeight: 'bold', fontSize: 18, color: '#444', marginBottom: 10, textAlign: 'center' }}>
+                Please enter the One-Time Password to verify your account
+              </Text>
+              <Text style={{ fontSize: 15, color: '#888', marginBottom: 24, textAlign: 'center' }}>
+                A One-Time Password has been sent to {mobile.replace(/^(\d{2})(\d{4})(\d{2})$/, '$1****$3')}
+              </Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 28 }}>
+                {otpDigits.map((digit, idx) => (
+                  <TextInput
+                    key={idx}
+                    ref={otpInputs[idx]}
+                    style={{
+                      width: 38,
+                      height: 48,
+                      borderWidth: 1.5,
+                      borderColor: '#ddd',
+                      borderRadius: 8,
+                      marginHorizontal: 6,
+                      textAlign: 'center',
+                      fontSize: 22,
+                      backgroundColor: '#f7f7f7',
+                      paddingVertical: 0,
+                      textAlignVertical: 'center'
+                    }}
+                    keyboardType="number-pad"
+                    maxLength={1}
+                    value={digit}
+                    onChangeText={value => handleOtpDigitChange(value, idx)}
+                    autoFocus={idx === 0}
+                    returnKeyType={idx === 5 ? 'done' : 'next'}
+                    blurOnSubmit={false}
+                  />
+                ))}
+              </View>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#ff6b6b',
+                  borderRadius: 8,
+                  paddingVertical: 12,
+                  paddingHorizontal: 32,
+                  marginBottom: 18,
+                  marginTop: 8,
+                  width: '100%',
+                  alignItems: 'center'
+                }}
+                onPress={handleOtpValidate}
+                disabled={otpLoading}
+              >
+                <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>
+                  {otpLoading ? 'Validating...' : 'Validate'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleOtpResend} disabled={otpLoading}>
+                <Text style={{ color: '#444', fontSize: 14, marginBottom: 8, textAlign: 'center', textDecorationLine: 'underline' }}>
+                  Resend One-Time Password
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleOtpCancel}>
+                <Text style={{ color: '#888', fontSize: 13, textAlign: 'center', textDecorationLine: 'underline' }}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </KeyboardAvoidingView>
     </ScrollView>
   );

@@ -839,7 +839,7 @@ function EarningsTab() {
   const today = new Date();
   const minDate = new Date(today.getFullYear(), today.getMonth() - 3, today.getDate());
 
-  const totalEarnings = earnings.reduce((sum, item) => sum + Number(item.total || 0), 0);
+  const totalEarnings = earnings.reduce((sum, item) => sum + Number(item.final_amount || 0), 0);
 
 
   useFocusEffect(
@@ -876,6 +876,7 @@ function EarningsTab() {
       }
       const res = await fetch(url);
       const data = await res.json();
+      console.log('Earnings API data:', data);
       setEarnings(data);
     } catch {
       setEarnings([]);
@@ -951,7 +952,7 @@ function EarningsTab() {
             <Text style={{ fontWeight: 'bold' }}>
               Date: {formatDate(item.date)}
             </Text>
-            <Text style={{ color: '#28a745', fontWeight: 'bold' }}>Earnings: ₹{item.total}</Text>
+            <Text style={{ color: '#28a745', fontWeight: 'bold' }}>Earnings: ₹{item.final_amount}</Text>
           </View>
         )}
         ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20 }}>No earnings found.</Text>}

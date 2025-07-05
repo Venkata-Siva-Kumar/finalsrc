@@ -7,12 +7,11 @@ export default function TermsScreen({ navigation, route }) {
   const scrollRef = useRef(null);
 
   const handleAgree = () => {
-    navigation.navigate({
-      name: 'Signup', // The route name of your SignupScreen
-      params: { acceptedTerms: true },
-      merge: true,
-    });
-  };
+  if (route.params?.onAgree) {
+    route.params.onAgree();
+  }
+  navigation.goBack();
+};
 
   const handleCancel = () => {
     navigation.goBack();
