@@ -121,24 +121,32 @@ export default function ProfileScreen({ route, navigation }) {
     dob === originalProfile.dob;
 
 
+  const showAlert = (title, message) => {
+    if (Platform.OS === 'web') {
+      alert(title ? `${title}\n${message || ''}` : message);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
   const handleSave = async () => {
     if (!fname || !lname || !gender) {
-      Alert.alert('Please fill all required fields: First Name, Last Name, Gender');
+      showAlert('Missing Fields', 'Please fill all required fields: First Name, Last Name, Gender');
       return;
     }
     if (email && !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)) {
-    Alert.alert('Invalid Email', 'Please enter a valid email address.');
-    return;
-  }
-  if (dob && !isValidDob(dob)) {
-    Alert.alert('Invalid DOB', 'Check for valid dob.');
-    return;
-  }
-  if (!isAtLeast18YearsOld(dob)) {
-    Alert.alert('Age Restriction', 'You must be at least 18 years old.');
-    return;
-  }
-  
+      showAlert('Invalid Email', 'Please enter a valid email address.');
+      return;
+    }
+    if (dob && !isValidDob(dob)) {
+      showAlert('Invalid DOB', 'Check for valid dob.');
+      return;
+    }
+    if (!isAtLeast18YearsOld(dob)) {
+      showAlert('Age Restriction', 'You must be at least 18 years old.');
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/update-user`, {
@@ -155,13 +163,13 @@ export default function ProfileScreen({ route, navigation }) {
       });
       const data = await response.json();
       if (data.success) {
-        Alert.alert('Profile updated!');
+        showAlert('Profile updated!');
         navigation.navigate('Main', { screen: 'Account', params: { userMobile: mobile, refresh: Date.now() } });
       } else {
-        Alert.alert('Update failed', data.message || '');
+        showAlert('Update failed', data.message || '');
       }
     } catch (e) {
-      Alert.alert('Error updating profile');
+      showAlert('Error', 'Error updating profile');
     }
     setLoading(false);
   };
@@ -368,15 +376,15 @@ export default function ProfileScreen({ route, navigation }) {
           style={[styles.button, { backgroundColor: '#d9534f', flex: 1, marginLeft: 8 }]}
           onPress={async () => {
             if (!deleteMobile || !deletePassword || !deleteConfirmPassword) {
-              Alert.alert('Error', 'Please fill all fields.');
+              showAlert('Error', 'Please fill all fields.');
               return;
             }
             if (deletePassword !== deleteConfirmPassword) {
-              Alert.alert('Error', 'Passwords do not match.');
+              showAlert('Error', 'Passwords do not match.');
               return;
             }
             if (deleteMobile !== userMobile) {
-              Alert.alert(  'Mobile Number Mismatch',  'The entered mobile number does not match your logged-in mobile number.');
+              showAlert('Mobile Number Mismatch', 'The entered mobile number does not match your logged-in mobile number.');
               return;
             }
             setDeleting(true);
@@ -391,14 +399,14 @@ export default function ProfileScreen({ route, navigation }) {
               });
               const data = await response.json();
               if (data.success) {
-                Alert.alert('Account Deleted', 'Your account has been deleted.', [
+                showAlert('Account Deleted', 'Your account has been deleted.', [
                   { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) }
                 ]);
               } else {
-                Alert.alert('Delete Failed', data.message || 'Could not delete account.');
+                showAlert('Delete Failed', data.message || 'Could not delete account.');
               }
             } catch (e) {
-              Alert.alert('Error', 'Failed to delete account.');
+              showAlert('Error', 'Failed to delete account.');
             }
             setDeleting(false);
             setShowDeleteModal(false);

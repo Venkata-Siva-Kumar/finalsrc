@@ -160,9 +160,9 @@ export default function HomeScreen({ navigation, route }) {
     }, [])
   );
 
-  // Auto-slide banners, pause if isBannerPaused is true
+  // Auto-slide banners, pause if isBannerPaused is true (MOBILE ONLY)
   useEffect(() => {
-    if (banners.length > 1 && !isBannerPaused) {
+    if (Platform.OS !== 'web' && banners.length > 1 && !isBannerPaused) {
       bannerTimer.current = setInterval(() => {
         setBannerIndex(prev => {
           const next = (prev + 1) % banners.length;
@@ -178,7 +178,6 @@ export default function HomeScreen({ navigation, route }) {
     }
   }, [banners, isBannerPaused]);
 
-  
   // Add/update a variant to cart and sync with backend
   const handleAddVariantToCart = (product, variant, quantity) => {
     setCart(prevCart => {
@@ -580,21 +579,91 @@ export default function HomeScreen({ navigation, route }) {
   const renderBanner = () => {
     if (banners.length === 0) return null;
 
-    // Use FlatList for both web and mobile for consistent swipe/scroll
-    const bannerWidth = Dimensions.get('window').width - 24;
+    const isWeb = Platform.OS === 'web';
+    const maxBannerWidth = 350; // Each banner max width on web
+    const bannerGap = 16;
+    const bannerWidth = isWeb
+      ? maxBannerWidth
+      : Dimensions.get('window').width - 24;
     const bannerHeight = (bannerWidth * 7) / 16;
 
+    if (isWeb) {
+      // On web: horizontal scroll if banners overflow, show full image, fixed width
+      return (
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: 8,
+            marginTop: 8,
+            minHeight: bannerHeight,
+            height: bannerHeight,
+            backgroundColor: 'transparent',
+            paddingHorizontal: 0,
+          }}
+        >
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator
+            contentContainerStyle={{
+              alignItems: 'center',
+              height: bannerHeight,
+              minHeight: bannerHeight,
+              paddingVertical: 0,
+              paddingHorizontal: 0,
+            }}
+            style={{
+              height: bannerHeight,
+              minHeight: bannerHeight+20,
+              backgroundColor: 'transparent',
+            }}
+          >
+            {banners.map((item, idx) => (
+              <View
+                key={idx}
+                style={{
+                  width: bannerWidth,
+                  height: bannerHeight,
+                  borderRadius: 10,
+                  overflow: 'hidden',
+                  backgroundColor: '#fffbe6',
+                  borderWidth: 1,
+                  borderColor: '#ffe066',
+                  elevation: 2,
+                  marginRight: idx !== banners.length - 1 ? bannerGap : 0,
+                }}
+              >
+                <Image
+                  source={{ uri: item.image_url }}
+                  style={{
+                    width: bannerWidth,
+                    height: bannerHeight,
+                    resizeMode: 'cover',
+                  }}
+                />
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      );
+    }
+
+    // Mobile: FlatList with pagingEnabled and auto-slide
     return (
       <View
         style={{
           marginHorizontal: 12,
-          marginBottom: 1,
+          marginBottom: 8,
+          marginTop: 8,
           borderRadius: 10,
           overflow: 'hidden',
           backgroundColor: '#fffbe6',
           borderWidth: 1,
           borderColor: '#ffe066',
           elevation: 2,
+          width: bannerWidth,
+          alignSelf: 'center',
           height: bannerHeight,
           justifyContent: 'center',
           alignItems: 'center',
