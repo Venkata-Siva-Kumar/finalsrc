@@ -5,12 +5,21 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { API_BASE_URL } from '../config';
 
+// Helper functions
 function formatDateToDDMMYYYY(date) {
   const d = new Date(date);
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const year = d.getFullYear();
   return `${day}-${month}-${year}`;
+}
+
+function showAlert(title, message) {
+  if (Platform.OS === 'web') {
+    window.alert(`${title ? title + '\n' : ''}${message}`);
+  } else {
+    Alert.alert(title, message);
+  }
 }
 
 function parseDDMMYYYYtoDate(str) {
@@ -85,7 +94,7 @@ export default function SignupScreen({ navigation, route }) {
   const handleOtpValidate = () => {
     const otpValue = otpDigits.join('');
     if (otpValue.length !== 6) {
-      Alert.alert('Error', 'Enter 6-digit OTP');
+      showAlert('Error', 'Enter 6-digit OTP');
       return;
     }
     setOtpLoading(true);
@@ -96,18 +105,17 @@ export default function SignupScreen({ navigation, route }) {
           .then(res => {
             setOtpLoading(false);
             setOtpModalVisible(false);
-            Alert.alert('Success', res.data.message, [
-              { text: 'OK', onPress: () => navigation.replace('Login') }
-            ]);
+            showAlert('Success', res.data.message);
+            navigation.replace('Login');
           })
           .catch(err => {
             setOtpLoading(false);
-            Alert.alert('Signup Failed', err.response?.data?.message || 'Something went wrong');
+            showAlert('Signup Failed', err.response?.data?.message || 'Something went wrong');
           });
       })
       .catch(err => {
         setOtpLoading(false);
-        Alert.alert('OTP Failed', err.response?.data?.message || 'Invalid OTP');
+        showAlert('OTP Failed', err.response?.data?.message || 'Invalid OTP');
       });
   };
 
@@ -121,7 +129,7 @@ export default function SignupScreen({ navigation, route }) {
       })
       .catch(err => {
         setOtpLoading(false);
-        Alert.alert('Failed to resend OTP', err.response?.data?.message || 'Try again');
+        showAlert('Failed to resend OTP', err.response?.data?.message || 'Try again');
       });
   };
 
@@ -147,36 +155,36 @@ export default function SignupScreen({ navigation, route }) {
     setTouched(newTouched);
 
     if (hasError) {
-      Alert.alert('Error', 'Please fill all required fields');
+      showAlert('Error', 'Please fill all required fields');
       return;
     }
 
     if (!/^[6-9]\d{9}$/.test(mobile)) {
-      Alert.alert('Error', 'Please enter a valid Indian mobile number');
+      showAlert('Error', 'Please enter a valid Indian mobile number');
       return;
     }
     if (email && !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
+      showAlert('Error', 'Please enter a valid email address');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Looks Password Mismatch');
+      showAlert('Error', 'Looks Password Mismatch');
       return;
     }
 
     if (!acceptedTerms) {
-      Alert.alert('Terms Required', 'You must read & accept the Terms and Conditions to sign up.');
+      showAlert('Terms Required', 'You must read & accept the Terms and Conditions to sign up.');
       return;
     }
 
     if (!dob || dob.trim() === '') {
-      Alert.alert('Date of Birth Required', 'Please enter your date of birth.');
+      showAlert('Date of Birth Required', 'Please enter your date of birth.');
       return;
     }
 
     if (!isAtLeast18(dob)) {
-      Alert.alert('Age Restriction', 'You must be at least 18 years old to sign up.');
+      showAlert('Age Restriction', 'You must be at least 18 years old to sign up.');
       return;
     }
 
@@ -187,7 +195,7 @@ export default function SignupScreen({ navigation, route }) {
         const user = res.data.user;
         if (user && user.activity_status === 'active') {
           setOtpLoading(false);
-          Alert.alert('User Exists', 'User already exists with this mobile number.');
+          showAlert('User Exists', 'User already exists with this mobile number.');
         } else {
           // Send OTP
           axios.post(`${API_BASE_URL}/send-otp`, { mobile })
@@ -197,13 +205,13 @@ export default function SignupScreen({ navigation, route }) {
             })
             .catch(err => {
               setOtpLoading(false);
-              Alert.alert('Failed to send OTP', err.response?.data?.message || 'Try again');
+              showAlert('Failed to send OTP', err.response?.data?.message || 'Try again');
             });
         }
       })
       .catch(err => {
         setOtpLoading(false);
-        Alert.alert('Error', 'Failed to check user status. Please try again.');
+        showAlert('Error', 'Failed to check user status. Please try again.');
       });
   };
 
@@ -214,227 +222,226 @@ export default function SignupScreen({ navigation, route }) {
     }
   }, [route.params?.acceptedTerms]);
 
-  return (
-    <ScrollView>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
-      >
-        <ScrollView
-          contentContainerStyle={[styles.container, { paddingBottom: 60 }]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={true}
+  // --- Platform-specific rendering for web/mobile ---
+  const MainContent = (
+    <>
+      {/* First Name */}
+      <Text style={styles.label}>
+        First Name <Text style={styles.required}>*</Text>
+      </Text>
+      <TextInput
+        placeholder="First Name"
+        placeholderTextColor="#888"
+        style={[
+          styles.input,
+          touched.fname && !fname ? styles.inputError : styles.inputUnique
+        ]}
+        value={fname}
+        maxLength={20}
+        onChangeText={text => {
+          setFname(text);
+          setTouched(t => ({ ...t, fname: false }));
+        }}
+      />
+
+      {/* Last Name */}
+      <Text style={styles.label}>
+        Last Name <Text style={styles.required}>*</Text>
+      </Text>
+      <TextInput
+        placeholder="Last Name"
+        placeholderTextColor="#888"
+        style={[
+          styles.input,
+          touched.lname && !lname ? styles.inputError : styles.inputUnique
+        ]}
+        value={lname}
+        maxLength={20}
+        onChangeText={text => {
+          setLname(text);
+          setTouched(t => ({ ...t, lname: false }));
+        }}
+      />
+
+      {/* Mobile Number */}
+      <Text style={styles.label}>
+        Mobile Number <Text style={styles.required}>*</Text>
+      </Text>
+      <TextInput
+        placeholder="Mobile Number"
+        placeholderTextColor="#888"
+        keyboardType="phone-pad"
+        style={[
+          styles.input,
+          touched.mobile && !mobile ? styles.inputError : styles.inputUnique
+        ]}
+        value={mobile}
+        maxLength={10}
+        onChangeText={text => {
+          setMobile(text.replace(/[^0-9]/g, ''));
+          setTouched(t => ({ ...t, mobile: false }));
+        }}
+      />
+
+      {/* Password */}
+      <Text style={styles.label}>
+        Password <Text style={styles.required}>*</Text>
+      </Text>
+      <View style={[styles.input, styles.inputUnique, styles.passwordRow, touched.password && !password ? styles.inputError : null]}>
+        <TextInput
+          placeholder="Password"
+          placeholderTextColor="#888"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={!showPassword}
+          style={styles.passwordInput}
+        />
+        <TouchableOpacity onPress={() => setShowPassword(v => !v)}>
+          <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={24} color="#888" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Confirm Password */}
+      <Text style={styles.label}>
+        Confirm Password <Text style={styles.required}>*</Text>
+      </Text>
+      <View style={[styles.input, styles.inputUnique, styles.passwordRow, touched.confirmPassword && !confirmPassword ? styles.inputError : null]}>
+        <TextInput
+          placeholder="Confirm Password"
+          placeholderTextColor="#888"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry={!showConfirmPassword}
+          style={styles.passwordInput}
+        />
+        <TouchableOpacity onPress={() => setShowConfirmPassword(v => !v)}>
+          <Ionicons name={showConfirmPassword ? 'eye' : 'eye-off'} size={24} color="#888" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Gender */}
+      <Text style={styles.label}>
+        Gender <Text style={styles.required}>*</Text>
+      </Text>
+      <View style={[
+        styles.genderContainer,
+        touched.gender && !gender ? styles.inputError : styles.inputUnique
+      ]}>
+        <TouchableOpacity style={styles.radioContainer} onPress={() => { setGender('Male'); setTouched(t => ({ ...t, gender: false })); }}>
+          <View style={[styles.radio, gender === 'Male' && styles.radioSelected]} />
+          <Text style={styles.radioLabel}>Male</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.radioContainer} onPress={() => { setGender('Female'); setTouched(t => ({ ...t, gender: false })); }}>
+          <View style={[styles.radio, gender === 'Female' && styles.radioSelected]} />
+          <Text style={styles.radioLabel}>Female</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.radioContainer} onPress={() => { setGender('Other'); setTouched(t => ({ ...t, gender: false })); }}>
+          <View style={[styles.radio, gender === 'Other' && styles.radioSelected]} />
+          <Text style={styles.radioLabel}>Other</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Email */}
+      <Text style={styles.label}>Email (optional)</Text>
+      <TextInput
+        placeholder="abcd@gmail.com"
+        placeholderTextColor="#888"
+        keyboardType="email-address"
+        style={[styles.input, styles.inputUnique]}
+        value={email}
+        onChangeText={setEmail}
+      />
+
+      <Text style={styles.label}>
+        Date of Birth <Text style={styles.required}>*</Text>
+      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
+        <TextInput
+          placeholder="dd-mm-yyyy"
+          placeholderTextColor="#888"
+          value={dob}
+          maxLength={10}
+          keyboardType="number-pad"
+          onChangeText={text => {
+            let cleaned = text.replace(/[^0-9]/g, '').slice(0, 8);
+            let formatted = '';
+            if (cleaned.length <= 2) {
+              formatted = cleaned;
+            } else if (cleaned.length <= 4) {
+              formatted = `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
+            } else {
+              formatted = `${cleaned.slice(0, 2)}-${cleaned.slice(2, 4)}-${cleaned.slice(4)}`;
+            }
+            setDob(formatted);
+          }}
+          style={[
+            styles.input,
+            touched.dob && !dob ? styles.inputError : styles.inputUnique,
+            { flex: 1, marginBottom: 0 }
+          ]}
+        />
+        <TouchableOpacity onPress={() => setShowPicker(true)} style={{ marginLeft: 8 }}>
+          <Text style={{ fontSize: 22, color: '#007bff' }}>📅</Text>
+        </TouchableOpacity>
+      </View>
+      {showPicker && (
+        <DateTimePicker
+          value={dob && parseDDMMYYYYtoDate(dob) ? parseDDMMYYYYtoDate(dob) : new Date()}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={onChange}
+          maximumDate={new Date()}
+        />
+      )}
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+        <TouchableOpacity
+          onPress={() => setAcceptedTerms(v => !v)}
+          style={{
+            width: 22,
+            height: 22,
+            borderWidth: 1.5,
+            borderColor: '#0066cc',
+            borderRadius: 4,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 8,
+            backgroundColor: acceptedTerms ? '#0066cc' : '#fff',
+          }}
         >
-          {/* First Name */}
-          <Text style={styles.label}>
-            First Name <Text style={styles.required}>*</Text>
-          </Text>
-          <TextInput
-            placeholder="First Name"
-            placeholderTextColor="#888"
-            style={[
-              styles.input,
-              touched.fname && !fname ? styles.inputError : styles.inputUnique
-            ]}
-            value={fname}
-            maxLength={20}
-            onChangeText={text => {
-              setFname(text);
-              setTouched(t => ({ ...t, fname: false }));
-            }}
-          />
-
-          {/* Last Name */}
-          <Text style={styles.label}>
-            Last Name <Text style={styles.required}>*</Text>
-          </Text>
-          <TextInput
-            placeholder="Last Name"
-            placeholderTextColor="#888"
-            style={[
-              styles.input,
-              touched.lname && !lname ? styles.inputError : styles.inputUnique
-            ]}
-            value={lname}
-            maxLength={20}
-            onChangeText={text => {
-              setLname(text);
-              setTouched(t => ({ ...t, lname: false }));
-            }}
-          />
-
-          {/* Mobile Number */}
-          <Text style={styles.label}>
-            Mobile Number <Text style={styles.required}>*</Text>
-          </Text>
-          <TextInput
-            placeholder="Mobile Number"
-            placeholderTextColor="#888"
-            keyboardType="phone-pad"
-            style={[
-              styles.input,
-              touched.mobile && !mobile ? styles.inputError : styles.inputUnique
-            ]}
-            value={mobile}
-            maxLength={10}
-            onChangeText={text => {
-              setMobile(text.replace(/[^0-9]/g, ''));
-              setTouched(t => ({ ...t, mobile: false }));
-            }}
-          />
-
-          {/* Password */}
-          <Text style={styles.label}>
-            Password <Text style={styles.required}>*</Text>
-          </Text>
-          <View style={[styles.input, styles.inputUnique, styles.passwordRow, touched.password && !password ? styles.inputError : null]}>
-            <TextInput
-              placeholder="Password"
-              placeholderTextColor="#888"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              style={styles.passwordInput}
-            />
-            <TouchableOpacity onPress={() => setShowPassword(v => !v)}>
-              <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={24} color="#888" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Confirm Password */}
-          <Text style={styles.label}>
-            Confirm Password <Text style={styles.required}>*</Text>
-          </Text>
-          <View style={[styles.input, styles.inputUnique, styles.passwordRow, touched.confirmPassword && !confirmPassword ? styles.inputError : null]}>
-            <TextInput
-              placeholder="Confirm Password"
-              placeholderTextColor="#888"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry={!showConfirmPassword}
-              style={styles.passwordInput}
-            />
-            <TouchableOpacity onPress={() => setShowConfirmPassword(v => !v)}>
-              <Ionicons name={showConfirmPassword ? 'eye' : 'eye-off'} size={24} color="#888" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Gender */}
-          <Text style={styles.label}>
-            Gender <Text style={styles.required}>*</Text>
-          </Text>
-          <View style={[
-            styles.genderContainer,
-            touched.gender && !gender ? styles.inputError : styles.inputUnique
-          ]}>
-            <TouchableOpacity style={styles.radioContainer} onPress={() => { setGender('Male'); setTouched(t => ({ ...t, gender: false })); }}>
-              <View style={[styles.radio, gender === 'Male' && styles.radioSelected]} />
-              <Text style={styles.radioLabel}>Male</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.radioContainer} onPress={() => { setGender('Female'); setTouched(t => ({ ...t, gender: false })); }}>
-              <View style={[styles.radio, gender === 'Female' && styles.radioSelected]} />
-              <Text style={styles.radioLabel}>Female</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.radioContainer} onPress={() => { setGender('Other'); setTouched(t => ({ ...t, gender: false })); }}>
-              <View style={[styles.radio, gender === 'Other' && styles.radioSelected]} />
-              <Text style={styles.radioLabel}>Other</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Email */}
-          <Text style={styles.label}>Email (optional)</Text>
-          <TextInput
-            placeholder="abcd@gmail.com"
-            placeholderTextColor="#888"
-            keyboardType="email-address"
-            style={[styles.input, styles.inputUnique]}
-            value={email}
-            onChangeText={setEmail}
-          />
-
-          <Text style={styles.label}>
-            Date of Birth <Text style={styles.required}>*</Text>
-          </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
-            <TextInput
-              placeholder="dd-mm-yyyy"
-              placeholderTextColor="#888"
-              value={dob}
-              maxLength={10}
-              keyboardType="number-pad"
-              onChangeText={text => {
-                let cleaned = text.replace(/[^0-9]/g, '').slice(0, 8);
-                let formatted = '';
-                if (cleaned.length <= 2) {
-                  formatted = cleaned;
-                } else if (cleaned.length <= 4) {
-                  formatted = `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
-                } else {
-                  formatted = `${cleaned.slice(0, 2)}-${cleaned.slice(2, 4)}-${cleaned.slice(4)}`;
-                }
-                setDob(formatted);
-              }}
-              style={[
-                styles.input,
-                touched.dob && !dob ? styles.inputError : styles.inputUnique,
-                { flex: 1, marginBottom: 0 }
-              ]}
-            />
-            <TouchableOpacity onPress={() => setShowPicker(true)} style={{ marginLeft: 8 }}>
-              <Text style={{ fontSize: 22, color: '#007bff' }}>📅</Text>
-            </TouchableOpacity>
-          </View>
-          {showPicker && (
-            <DateTimePicker
-              value={dob && parseDDMMYYYYtoDate(dob) ? parseDDMMYYYYtoDate(dob) : new Date()}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={onChange}
-              maximumDate={new Date()}
-            />
+          {acceptedTerms && (
+            <Ionicons name="checkmark" size={18} color="#fff" />
           )}
+        </TouchableOpacity>
+        <Text style={{ fontSize: 14, color: '#222' }}>
+          I accept the{' '}
+          <Text
+            style={{ color: '#0066cc', textDecorationLine: 'underline' }}
+            onPress={() => navigation.navigate('Terms', {
+              onAgree: () => setAcceptedTerms(true)
+            })}
+          >
+            Terms and Conditions
+          </Text>
+        </Text>
+      </View>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-            <TouchableOpacity
-              onPress={() => setAcceptedTerms(v => !v)}
-              style={{
-                width: 22,
-                height: 22,
-                borderWidth: 1.5,
-                borderColor: '#0066cc',
-                borderRadius: 4,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: 8,
-                backgroundColor: acceptedTerms ? '#0066cc' : '#fff',
-              }}
-            >
-              {acceptedTerms && (
-                <Ionicons name="checkmark" size={18} color="#fff" />
-              )}
-            </TouchableOpacity>
-            <Text style={{ fontSize: 14, color: '#222' }}>
-              I accept the{' '}
-              <Text
-                style={{ color: '#0066cc', textDecorationLine: 'underline' }}
-                onPress={() => navigation.navigate('Terms', {
-                  onAgree: () => setAcceptedTerms(true)
-                })}
-              >
-                Terms and Conditions
-              </Text>
-            </Text>
-          </View>
+      <TouchableOpacity style={styles.button} onPress={handleSignup}>
+        <Text style={styles.buttonText}>Sign Up</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+        <Text style={styles.link}>Already have an account? Login</Text>
+      </TouchableOpacity>
+    </>
+  );
 
-          <TouchableOpacity style={styles.button} onPress={handleSignup}>
-            <Text style={styles.buttonText}>Sign Up</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.link}>Already have an account? Login</Text>
-          </TouchableOpacity>
-        </ScrollView>
-
+  // --- Main render ---
+  return (
+    Platform.OS === 'web' ? (
+      <ScrollView>
+        <View style={styles.container}>
+          {MainContent}
+        </View>
         {/* OTP Modal */}
         <Modal
           visible={otpModalVisible}
@@ -521,8 +528,110 @@ export default function SignupScreen({ navigation, route }) {
             </View>
           </View>
         </Modal>
-      </KeyboardAvoidingView>
-    </ScrollView>
+      </ScrollView>
+    ) : (
+      <ScrollView>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+        >
+          <ScrollView
+            contentContainerStyle={[styles.container, { paddingBottom: 60 }]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={true}
+          >
+            {MainContent}
+          </ScrollView>
+          {/* OTP Modal */}
+          <Modal
+            visible={otpModalVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={handleOtpCancel}
+          >
+            <View style={{
+              flex: 1,
+              backgroundColor: 'rgba(0,0,0,0.4)',
+              justifyContent: 'center',
+              alignItems: 'center'
+            }}>
+              <View style={{
+                backgroundColor: '#fff',
+                borderRadius: 12,
+                padding: 32,
+                width: '90%',
+                alignItems: 'center',
+                elevation: 8
+              }}>
+                <Text style={{ fontWeight: 'bold', fontSize: 18, color: '#444', marginBottom: 10, textAlign: 'center' }}>
+                  Please enter the One-Time Password to verify your account
+                </Text>
+                <Text style={{ fontSize: 15, color: '#888', marginBottom: 24, textAlign: 'center' }}>
+                  A One-Time Password has been sent to {mobile.replace(/^(\d{2})(\d{4})(\d{2})$/, '$1****$3')}
+                </Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 28 }}>
+                  {otpDigits.map((digit, idx) => (
+                    <TextInput
+                      key={idx}
+                      ref={otpInputs[idx]}
+                      style={{
+                        width: 38,
+                        height: 48,
+                        borderWidth: 1.5,
+                        borderColor: '#ddd',
+                        borderRadius: 8,
+                        marginHorizontal: 6,
+                        textAlign: 'center',
+                        fontSize: 22,
+                        backgroundColor: '#f7f7f7',
+                        paddingVertical: 0,
+                        textAlignVertical: 'center'
+                      }}
+                      keyboardType="number-pad"
+                      maxLength={1}
+                      value={digit}
+                      onChangeText={value => handleOtpDigitChange(value, idx)}
+                      autoFocus={idx === 0}
+                      returnKeyType={idx === 5 ? 'done' : 'next'}
+                      blurOnSubmit={false}
+                    />
+                  ))}
+                </View>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#ff6b6b',
+                    borderRadius: 8,
+                    paddingVertical: 12,
+                    paddingHorizontal: 32,
+                    marginBottom: 18,
+                    marginTop: 8,
+                    width: '100%',
+                    alignItems: 'center'
+                  }}
+                  onPress={handleOtpValidate}
+                  disabled={otpLoading}
+                >
+                  <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>
+                    {otpLoading ? 'Validating...' : 'Validate'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleOtpResend} disabled={otpLoading}>
+                  <Text style={{ color: '#444', fontSize: 14, marginBottom: 8, textAlign: 'center', textDecorationLine: 'underline' }}>
+                    Resend One-Time Password
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleOtpCancel}>
+                  <Text style={{ color: '#888', fontSize: 13, textAlign: 'center', textDecorationLine: 'underline' }}>
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+        </KeyboardAvoidingView>
+      </ScrollView>
+    )
   );
 }
 

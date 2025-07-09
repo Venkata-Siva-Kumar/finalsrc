@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   TextInput,
   Dimensions,
+  Platform,
 } from 'react-native';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
@@ -575,7 +576,180 @@ export default function HomeScreen({ navigation, route }) {
     );
   }
 
-  return (
+  const isWeb = Platform.OS === 'web';
+
+  return isWeb ? (
+    <ScrollView style={{ flex: 1, backgroundColor: 'transparent' }}>
+      {/* Search Bar */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          borderColor: '#e0e0e0',
+          borderWidth: 1,
+          borderRadius: 8,
+          paddingHorizontal: 12,
+          margin: 8,
+          backgroundColor: '#fff',
+          height: 40,
+        }}
+      >
+        <TextInput
+          style={{ flex: 1, fontSize: 16 }}
+          placeholder="Search products..."
+          placeholderTextColor="#888"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          clearButtonMode="while-editing"
+        />
+        <Ionicons name="search" size={20} color="#888" style={{ marginLeft: 8 }} />
+      </View>
+
+      {/* Sliding Banner */}
+      {banners.length > 0 && (
+        <View
+          style={{
+            marginHorizontal: 12,
+            marginBottom: 1,
+            borderRadius: 10,
+            overflow: 'hidden',
+            backgroundColor: '#fffbe6',
+            borderWidth: 1,
+            borderColor: '#ffe066',
+            elevation: 2,
+            width: '100%',
+            maxWidth: 600, // Limit width for web
+            alignSelf: 'center',
+            height: 180,   // Fixed height for banner
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <FlatList
+            ref={bannerFlatListRef}
+            data={banners}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(_, idx) => idx.toString()}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                activeOpacity={1}
+                onLongPress={() => setIsBannerPaused(true)}
+                onPressOut={() => setIsBannerPaused(false)}
+                delayLongPress={200}
+              >
+                <Image
+                  source={{ uri: item.image_url }}
+                  style={{
+                    width: 600, // Match maxWidth above
+                    height: 180,
+                    resizeMode: 'cover',
+                  }}
+                />
+              </TouchableOpacity>
+            )}
+            onMomentumScrollEnd={e => {
+              const newIndex = Math.round(
+                e.nativeEvent.contentOffset.x / 600 // Match width above
+              );
+              setBannerIndex(newIndex);
+            }}
+            initialScrollIndex={0}
+            getItemLayout={(_, index) => ({
+              length: 600,
+              offset: 600 * index,
+              index,
+            })}
+          />
+          {/* Dots indicator */}
+          <View style={{ flexDirection: 'row', position: 'absolute', bottom: 10, alignSelf: 'center' }}>
+            {banners.map((_, idx) => (
+              <View
+                key={idx}
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: bannerIndex === idx ? '#007bff' : '#ccc',
+                  marginHorizontal: 3,
+                }}
+              />
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Main content: Sidebar + Product List */}
+      <View style={{ flex: 1, flexDirection: 'row' }}>
+        {/* Sidebar */}
+        <View style={{
+          width: 90,
+          backgroundColor: '#f7f7f7',
+          borderRightWidth: 1,
+          borderRightColor: '#e0e0e0',
+          paddingTop: 1,
+          paddingBottom: 12,
+        }}>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {categories.map((cat) => (
+              <TouchableOpacity
+                key={cat.id}
+                style={{
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  paddingVertical: 10,
+                  paddingHorizontal: 8,
+                  backgroundColor: selectedCategoryId === cat.id ? '#e0e7ff' : 'transparent',
+                  borderRadius: 8,
+                  marginBottom: 2,
+                }}
+                onPress={() => {
+                  setSelectedCategoryId(cat.id);
+                  setSearchQuery('');
+                }}
+              >
+                <Image
+                  source={{ uri: cat.image_url ? cat.image_url : 'https://via.placeholder.com/36' }}
+                  style={{
+                    width: 60,
+                    height: 60,
+                    borderRadius: 40,
+                    backgroundColor: '#fff',
+                    borderWidth: 1,
+                    borderColor: '#e0e0e0',
+                    marginBottom: 4,
+                  }}
+                />
+                <Text style={{ fontSize: 13, color: '#333', textAlign: 'center' }}>{cat.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Product List */}
+        <View style={{ flex: 1, padding: 8 }}>
+          {loading ? (
+            <Text style={{ textAlign: 'center', marginTop: 30 }}>Loading...</Text>
+          ) : error ? (
+            <Text style={{ textAlign: 'center', marginTop: 30, color: 'red' }}>{error}</Text>
+          ) : (
+            <FlatList
+              data={products}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={renderItem}
+              ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 30 }}>No products found.</Text>}
+              initialNumToRender={10}
+              maxToRenderPerBatch={10}
+              windowSize={10}
+              removeClippedSubviews={true}
+            />
+          )}
+        </View>
+      </View>
+      {renderVariantModal()}
+    </ScrollView>
+  ) : (
     <View style={{ flex: 1, backgroundColor: 'transparent' }}>
       {/* Search Bar */}
       <View
@@ -614,8 +788,10 @@ export default function HomeScreen({ navigation, route }) {
             borderWidth: 1,
             borderColor: '#ffe066',
             elevation: 2,
-            // Set height to 16:9 aspect ratio based on screen width
-            height: ((Dimensions.get('window').width - 24) * 7) / 16,
+            width: '100%',
+            maxWidth: 600, // Limit width for web
+            alignSelf: 'center',
+            height: 180,   // Fixed height for banner
             justifyContent: 'center',
             alignItems: 'center',
           }}
@@ -637,8 +813,8 @@ export default function HomeScreen({ navigation, route }) {
                 <Image
                   source={{ uri: item.image_url }}
                   style={{
-                    width: Dimensions.get('window').width - 24,
-                    height: ((Dimensions.get('window').width - 24) * 7) / 16, // 16:9 aspect ratio
+                    width: 600, // Match maxWidth above
+                    height: 180,
                     resizeMode: 'cover',
                   }}
                 />
@@ -646,14 +822,14 @@ export default function HomeScreen({ navigation, route }) {
             )}
             onMomentumScrollEnd={e => {
               const newIndex = Math.round(
-                e.nativeEvent.contentOffset.x / (Dimensions.get('window').width - 24)
+                e.nativeEvent.contentOffset.x / 600 // Match width above
               );
               setBannerIndex(newIndex);
             }}
             initialScrollIndex={0}
             getItemLayout={(_, index) => ({
-              length: Dimensions.get('window').width - 24,
-              offset: (Dimensions.get('window').width - 24) * index,
+              length: 600,
+              offset: 600 * index,
               index,
             })}
           />

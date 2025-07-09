@@ -8,11 +8,19 @@ import {
   StyleSheet,
   Animated,
   Keyboard,
-  TouchableWithoutFeedback,  
+  TouchableWithoutFeedback,
+  Platform,
 } from 'react-native';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 
+function showAlert(title, message) {
+  if (Platform.OS === 'web') {
+    window.alert(`${title ? title + '\n' : ''}${message}`);
+  } else {
+    Alert.alert(title, message);
+  }
+}
 
 export default function AdminLoginScreen({ navigation }) {
   const [mobile, setMobile] = useState('');
@@ -21,18 +29,14 @@ export default function AdminLoginScreen({ navigation }) {
   const [scaleValue] = useState(new Animated.Value(1));
   const [showPassword, setShowPassword] = useState(false);
 
-
- 
-
   // Password login (existing)
   const handleLogin = async () => {
     if (!mobile || !password) {
-      Alert.alert('Error', 'Please enter admin mobile number and password');
+      showAlert('Error', 'Please enter admin mobile number and password');
       return;
     }
-    if (!/^\d{10}$/.test(mobile)) 
-    {
-      Alert.alert('Error', 'Admin mobile number must be exactly 10 digits');
+    if (!/^\d{10}$/.test(mobile)) {
+      showAlert('Error', 'Admin mobile number must be exactly 10 digits');
       return;
     }
     try {
@@ -41,11 +45,10 @@ export default function AdminLoginScreen({ navigation }) {
         password,
       });
 
-      
       //Alert.alert('Success', response.data.message);
       navigation.replace('AdminMainTabs', { mobile });
     } catch (error) {
-      Alert.alert(
+      showAlert(
         'Admin Login Failed',
         error.response?.data?.message || 'Something went wrong'
       );
@@ -69,30 +72,69 @@ export default function AdminLoginScreen({ navigation }) {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-    <View style={styles.container}>
-      <Text style={styles.header}>Admin Login 🧑‍💼</Text>
-      <TextInput
-        style={[
-          styles.input,
-          focusedField === 'mobile' && styles.inputFocused
-        ]}
-        placeholder="Admin Mobile Number"
-        maxLength={10}
-        placeholderTextColor="#888"
-        keyboardType="phone-pad"
-        value={mobile}
-        onChangeText={setMobile}
-        onFocus={() => setFocusedField('mobile')}
-        onBlur={() => setFocusedField('')}
-      />
-
-      
+    Platform.OS === 'web' ? (
+      <View style={styles.container}>
+        <Text style={styles.header}>Admin Login 🧑‍💼</Text>
+        <TextInput
+          style={[
+            styles.input,
+            focusedField === 'mobile' && styles.inputFocused
+          ]}
+          placeholder="Admin Mobile Number"
+          maxLength={10}
+          placeholderTextColor="#888"
+          keyboardType="phone-pad"
+          value={mobile}
+          onChangeText={setMobile}
+          onFocus={() => setFocusedField('mobile')}
+          onBlur={() => setFocusedField('')}
+        />
+        <TextInput
+          style={[
+            styles.input,
+            focusedField === 'password' && styles.inputFocused,
+          ]}
+          placeholder="Password"
+          placeholderTextColor="#888"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={!showPassword}
+          onFocus={() => setFocusedField('password')}
+          onBlur={() => setFocusedField('')}
+        />
+        <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
+          <TouchableOpacity
+            style={styles.button}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            onPress={handleLogin}
+          >
+            <Text style={styles.buttonText}>Login as Admin</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+    ) : (
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={styles.container}>
+          <Text style={styles.header}>Admin Login 🧑‍💼</Text>
+          <TextInput
+            style={[
+              styles.input,
+              focusedField === 'mobile' && styles.inputFocused
+            ]}
+            placeholder="Admin Mobile Number"
+            maxLength={10}
+            placeholderTextColor="#888"
+            keyboardType="phone-pad"
+            value={mobile}
+            onChangeText={setMobile}
+            onFocus={() => setFocusedField('mobile')}
+            onBlur={() => setFocusedField('')}
+          />
           <TextInput
             style={[
               styles.input,
               focusedField === 'password' && styles.inputFocused,
-              
             ]}
             placeholder="Password"
             placeholderTextColor="#888"
@@ -112,9 +154,9 @@ export default function AdminLoginScreen({ navigation }) {
               <Text style={styles.buttonText}>Login as Admin</Text>
             </TouchableOpacity>
           </Animated.View>
-          
-    </View>
-    </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    )
   );
 }
 
@@ -170,29 +212,28 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
   passwordRow: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  paddingHorizontal: 8,
-  paddingVertical: 0,
-  paddingRight: 0,
-},
-passwordInput: {
-  flex: 1,
-  fontSize: 18,
-  color: '#333',
-  paddingVertical: 14,
-  paddingHorizontal: 8,
-  backgroundColor: 'transparent',
-  borderWidth: 0,
-},
-label: {
-  fontSize: 16,
-  fontWeight: 'bold',
-  marginBottom: 4,
-  color: '#333',
-  
-},
-required: {
-  color: '#ff3b30',
-},
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 0,
+    paddingRight: 0,
+  },
+  passwordInput: {
+    flex: 1,
+    fontSize: 18,
+    color: '#333',
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 4,
+    color: '#333',
+  },
+  required: {
+    color: '#ff3b30',
+  },
 });

@@ -6,10 +6,20 @@ import {
   TouchableOpacity,
   Alert,
   StyleSheet,
+  Platform,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { CartContext } from "./CartContext";
 import { API_BASE_URL } from "../config";
+
+// Cross-platform alert
+function showAlert(title, message) {
+  if (Platform.OS === "web") {
+    window.alert(`${title ? title + "\n" : ""}${message}`);
+  } else {
+    Alert.alert(title, message);
+  }
+}
 
 function generateOrderId() {
   const now = new Date();
@@ -39,7 +49,7 @@ export default function PaymentScreen({ navigation, route }) {
 
   const handlePaymentSelect = (method) => {
     if (method !== "Cash on Delivery") {
-      Alert.alert(
+      showAlert(
         "Unavailable",
         `${method} is temporarily unavailable. Please select Cash on Delivery.`
       );
@@ -50,7 +60,7 @@ export default function PaymentScreen({ navigation, route }) {
 
   const handleOrderConfirm = async () => {
     if (!selectedMethod) {
-      Alert.alert("Select Payment", "Please select a payment method");
+      showAlert("Select Payment", "Please select a payment method");
       return;
     }
     if (isPlacingOrder) return;
@@ -90,7 +100,7 @@ export default function PaymentScreen({ navigation, route }) {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        Alert.alert("Order Placed", `Your order ID is: ${orderId}`);
+        showAlert("Order Placed", `Your order ID is: ${orderId}`);
         setCart([]); // Clear cart in context
         setOrderSuccess(true);
         if (route?.params?.user_id) {
@@ -123,14 +133,14 @@ export default function PaymentScreen({ navigation, route }) {
           }
         }, 1000);
       } else {
-        Alert.alert(
+        showAlert(
           "Order Failed",
           result.error || result.message || "Could not place order. Please try again."
         );
         setIsPlacingOrder(false);
       }
     } catch (error) {
-      Alert.alert("Order Failed", "Could not place order. Please try again.");
+      showAlert("Order Failed", "Could not place order. Please try again.");
       console.error(error);
     }
     setIsPlacingOrder(false);

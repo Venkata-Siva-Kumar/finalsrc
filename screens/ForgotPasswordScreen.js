@@ -1,7 +1,16 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, Modal, Keyboard } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, Modal, Keyboard, Platform, ScrollView } from 'react-native';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
+
+// Cross-platform alert
+function showAlert(title, message) {
+  if (Platform.OS === 'web') {
+    window.alert(`${title ? title + '\n' : ''}${message}`);
+  } else {
+    Alert.alert(title, message);
+  }
+}
 
 export default function ForgotPasswordScreen({ navigation }) {
   const [mobile, setMobile] = useState('');
@@ -15,7 +24,7 @@ export default function ForgotPasswordScreen({ navigation }) {
 
   const sendOtp = () => {
     if (!/^[6-9]\d{9}$/.test(mobile)) {
-      Alert.alert('Error', 'Enter a valid 10-digit mobile number');
+      showAlert('Error', 'Enter a valid 10-digit mobile number');
       return;
     }
     setOtpLoading(true);
@@ -28,7 +37,7 @@ export default function ForgotPasswordScreen({ navigation }) {
       })
       .catch(err => {
         setOtpLoading(false);
-        Alert.alert('Error', err.response?.data?.message || 'Failed to send OTP');
+        showAlert('Error', err.response?.data?.message || 'Failed to send OTP');
       });
   };
 
@@ -48,7 +57,7 @@ export default function ForgotPasswordScreen({ navigation }) {
   const verifyOtp = () => {
     const otpValue = otp.join('');
     if (otpValue.length !== 6) {
-      Alert.alert('Error', 'Enter 6-digit OTP');
+      showAlert('Error', 'Enter 6-digit OTP');
       return;
     }
     setOtpLoading(true);
@@ -60,31 +69,30 @@ export default function ForgotPasswordScreen({ navigation }) {
       })
       .catch(err => {
         setOtpLoading(false);
-        Alert.alert('Error', err.response?.data?.message || 'Invalid OTP');
+        showAlert('Error', err.response?.data?.message || 'Invalid OTP');
       });
   };
 
   const resetPassword = () => {
     const otpValue = otp.join('');
     if (!newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Enter new password and confirm password');
+      showAlert('Error', 'Enter new password and confirm password');
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      showAlert('Error', 'Passwords do not match');
       return;
     }
     setOtpLoading(true);
     axios.post(`${API_BASE_URL}/forgot-password/reset`, { mobile, otp: otpValue, newPassword })
       .then(() => {
         setOtpLoading(false);
-        Alert.alert('Success', 'Password updated successfully', [
-          { text: 'OK', onPress: () => navigation.replace('Login') }
-        ]);
+        showAlert('Success', 'Password updated successfully');
+        navigation.replace('Login');
       })
       .catch(err => {
         setOtpLoading(false);
-        Alert.alert('Error', err.response?.data?.message || 'Failed to update password');
+        showAlert('Error', err.response?.data?.message || 'Failed to update password');
       });
   };
 
@@ -94,7 +102,8 @@ export default function ForgotPasswordScreen({ navigation }) {
     setStep(1);
   };
 
-  return (
+  // Platform-specific rendering for web/mobile
+  const MainContent = (
     <View style={styles.container}>
       {step === 1 && (
         <>
@@ -187,6 +196,16 @@ export default function ForgotPasswordScreen({ navigation }) {
         </>
       )}
     </View>
+  );
+
+  return (
+    Platform.OS === 'web' ? (
+      <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
+        {MainContent}
+      </ScrollView>
+    ) : (
+      MainContent
+    )
   );
 }
 
