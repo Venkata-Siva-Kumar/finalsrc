@@ -33,11 +33,11 @@ export default function LoginScreen({ navigation }) {
   
   const handleLogin = async () => {
   if (!mobile || !password) {
-    Alert.alert('Error', 'Please enter mobile number and password');
+    showAlert('Error', 'Please enter mobile number and password');
     return;
   }
   if (mobile.length !== 10 || !/^\d{10}$/.test(mobile)) {
-    Alert.alert('Error', 'Check Mobile Number');
+    showAlert('Error', 'Check Mobile Number');
     return;
   }
   try {
@@ -65,7 +65,7 @@ export default function LoginScreen({ navigation }) {
 
   } catch (error) {
     console.log(error);
-    Alert.alert(
+    showAlert(
       'Login Failed',
       error.response?.data?.message || 'Something went wrong'
     );
@@ -89,88 +89,171 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
-    
-      <KeyboardAvoidingView style={{ flex: 1 }}  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}  keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}  >
+    Platform.OS === 'web' ? (
+      <View style={{ flex: 1 }}>
         <ScrollView>
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-    <View style={styles.container}>
-       <ExpoImage
-        source={require('../icon_gif.gif')}
-        style={styles.logo}
-        contentFit="contain"
-        transition={100}
-      />
-    
+          <View style={styles.container}>
+            <ExpoImage
+              source={require('../icon_gif.gif')}
+              style={styles.logo}
+              contentFit="contain"
+              transition={100}
+            />
+          
 
-      <TextInput
-        style={[
-          styles.input,
-          focusedField === 'mobile' && styles.inputFocused
-        ]}
-        placeholder="Mobile Number"
-        placeholderTextColor="#888"
-        keyboardType="phone-pad"
-        value={mobile}
-        maxLength={10}
-        onChangeText={setMobile}
-        onFocus={() => setFocusedField('mobile')}
-        onBlur={() => setFocusedField('')}
-      />
+            <TextInput
+              style={[
+                styles.input,
+                focusedField === 'mobile' && styles.inputFocused
+              ]}
+              placeholder="Mobile Number"
+              placeholderTextColor="#888"
+              keyboardType="phone-pad"
+              value={mobile}
+              maxLength={10}
+              onChangeText={setMobile}
+              onFocus={() => setFocusedField('mobile')}
+              onBlur={() => setFocusedField('')}
+            />
 
-      <View style={[ styles.input,{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, marginBottom: 20 }]}>
-          <TextInput
-            placeholder="Password"
-            placeholderTextColor="#888"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-            style={{ flex: 1,fontSize: 16,color: '#333',paddingVertical: 0, paddingHorizontal: 0,}}
-            onFocus={() => setFocusedField('password')}
-            onBlur={() => setFocusedField('')}
-          />
-          <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={{ padding: 4 }}>
-            <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={24} color="#888" />
-          </TouchableOpacity>
-        </View>
+            <View style={[ styles.input,{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, marginBottom: 20 }]}>
+                <TextInput
+                  placeholder="Password"
+                  placeholderTextColor="#888"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  style={{ flex: 1,fontSize: 16,color: '#333',paddingVertical: 0, paddingHorizontal: 0,}}
+                  onFocus={() => setFocusedField('password')}
+                  onBlur={() => setFocusedField('')}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={{ padding: 4 }}>
+                  <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={24} color="#888" />
+                </TouchableOpacity>
+              </View>
 
-      <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
-        <TouchableOpacity
-          style={styles.button}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-          onPress={handleLogin}
-        >
-          <Text style={styles.buttonText}>Login</Text>
+            <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
+              <TouchableOpacity
+                style={styles.button}
+                onPressIn={handlePressIn}
+                onPressOut={handlePressOut}
+                onPress={handleLogin}
+              >
+                <Text style={styles.buttonText}>Login</Text>
 
-        </TouchableOpacity>
+              </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.button}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-          onPress={() => navigation.navigate('AdminLogin')}>
-          <Text style={styles.buttonText}>Admin Login</Text>
-        </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.button}
+                onPressIn={handlePressIn}
+                onPressOut={handlePressOut}
+                onPress={() => navigation.navigate('AdminLogin')}>
+                <Text style={styles.buttonText}>Admin Login</Text>
+              </TouchableOpacity>
 
-      </Animated.View>
+            </Animated.View>
 
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>   
-        
-        <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} style={{ marginLeft: 6 }} >
-          <Text style={{ color: '#007aff', fontSize: 13, textDecorationLine: 'underline' }}>Forgot Password?</Text>
-        </TouchableOpacity>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>   
+              
+              <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} style={{ marginLeft: 6 }} >
+                <Text style={{ color: '#007aff', fontSize: 13, textDecorationLine: 'underline' }}>Forgot Password?</Text>
+              </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation.navigate('Signup')} style={{ marginRight: 6 }}>
-          <Text style={styles.link}>Don't have an account? Sign Up</Text>
-        </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('Signup')} style={{ marginRight: 6 }}>
+                <Text style={styles.link}>Don't have an account? Sign Up</Text>
+              </TouchableOpacity>
 
+            </View>
+
+          </View>
+        </ScrollView>
       </View>
+    ) : (
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+      >
+        <ScrollView>
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+            <View style={styles.container}>
+               <ExpoImage
+                source={require('../icon_gif.gif')}
+                style={styles.logo}
+                contentFit="contain"
+                transition={100}
+              />
+            
 
-    </View>
-    </TouchableWithoutFeedback>
-    </ScrollView>
-    </KeyboardAvoidingView>
-    
+              <TextInput
+                style={[
+                  styles.input,
+                  focusedField === 'mobile' && styles.inputFocused
+                ]}
+                placeholder="Mobile Number"
+                placeholderTextColor="#888"
+                keyboardType="phone-pad"
+                value={mobile}
+                maxLength={10}
+                onChangeText={setMobile}
+                onFocus={() => setFocusedField('mobile')}
+                onBlur={() => setFocusedField('')}
+              />
+
+              <View style={[ styles.input,{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, marginBottom: 20 }]}>
+                  <TextInput
+                    placeholder="Password"
+                    placeholderTextColor="#888"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    style={{ flex: 1,fontSize: 16,color: '#333',paddingVertical: 0, paddingHorizontal: 0,}}
+                    onFocus={() => setFocusedField('password')}
+                    onBlur={() => setFocusedField('')}
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={{ padding: 4 }}>
+                    <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={24} color="#888" />
+                  </TouchableOpacity>
+                </View>
+
+              <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
+                <TouchableOpacity
+                  style={styles.button}
+                  onPressIn={handlePressIn}
+                  onPressOut={handlePressOut}
+                  onPress={handleLogin}
+                >
+                  <Text style={styles.buttonText}>Login</Text>
+
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.button}
+                  onPressIn={handlePressIn}
+                  onPressOut={handlePressOut}
+                  onPress={() => navigation.navigate('AdminLogin')}>
+                  <Text style={styles.buttonText}>Admin Login</Text>
+                </TouchableOpacity>
+
+              </Animated.View>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>   
+                
+                <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} style={{ marginLeft: 6 }} >
+                  <Text style={{ color: '#007aff', fontSize: 13, textDecorationLine: 'underline' }}>Forgot Password?</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => navigation.navigate('Signup')} style={{ marginRight: 6 }}>
+                  <Text style={styles.link}>Don't have an account? Sign Up</Text>
+                </TouchableOpacity>
+
+              </View>
+
+            </View>
+          </TouchableWithoutFeedback>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    )
   );
 }
 
@@ -241,3 +324,11 @@ const styles = StyleSheet.create({
     
   },
 });
+
+function showAlert(title, message) {
+  if (Platform.OS === 'web') {
+    window.alert(`${title ? title + '\n' : ''}${message}`);
+  } else {
+    Alert.alert(title, message);
+  }
+}
