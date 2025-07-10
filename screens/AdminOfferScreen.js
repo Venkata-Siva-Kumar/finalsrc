@@ -1,7 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, Alert, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, Button, Alert, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { API_BASE_URL } from '../config';
+
+// --- Cross-platform alert utility ---
+function showAlert(title, message, buttons) {
+  if (Platform.OS === 'web') {
+    if (buttons && buttons.length > 1) {
+      const okBtn = buttons.find(
+        b =>
+          b.style === 'destructive' ||
+          (b.text && (
+            b.text.toLowerCase().includes('ok') ||
+            b.text.toLowerCase().includes('yes') ||
+            b.text.toLowerCase().includes('remove') ||
+            b.text.toLowerCase().includes('delete')
+          ))
+      );
+      const cancelBtn = buttons.find(
+        b => b.style === 'cancel' || (b.text && b.text.toLowerCase().includes('cancel'))
+      );
+      const result = window.confirm(`${title ? title + '\n' : ''}${message || ''}`);
+      if (result && okBtn && okBtn.onPress) okBtn.onPress();
+      if (!result && cancelBtn && cancelBtn.onPress) cancelBtn.onPress();
+    } else {
+      alert(`${title ? title + '\n' : ''}${message || ''}`);
+      if (buttons && buttons[0] && buttons[0].onPress) buttons[0].onPress();
+    }
+  } else {
+    Alert.alert(title, message, buttons);
+  }
+}
 
 // --- Offers Tab ---
 function OffersTab() {
@@ -50,7 +79,7 @@ function OffersTab() {
   // Add or update offer
   const handleSubmit = async () => {
     if (!couponCode || !startDate || !endDate || !minCart || !maxCart || !discountPercent) {
-      Alert.alert('All fields except Max Discount are required');
+      showAlert('Missing Fields', 'All fields except Max Discount are required');
       return;
     }
     try {
@@ -76,7 +105,10 @@ function OffersTab() {
       });
       const data = await res.json();
       if (data.success) {
-        Alert.alert(editingId ? 'Offer updated' : 'Offer added', editingId ? 'Offer updated successfully' : 'Offer added successfully');
+        showAlert(
+          editingId ? 'Offer updated' : 'Offer added',
+          editingId ? 'Offer updated successfully' : 'Offer added successfully'
+        );
         setCouponCode('');
         setStartDate('');
         setEndDate('');
@@ -87,16 +119,16 @@ function OffersTab() {
         setEditingId(null);
         fetchOffers();
       } else {
-        Alert.alert('Error', data.error || 'Failed to save offer');
+        showAlert('Error', data.error || 'Failed to save offer');
       }
     } catch (err) {
-      Alert.alert('Error', err.message);
+      showAlert('Error', err.message);
     }
   };
 
   // Remove offer
   const handleRemove = async (id) => {
-    Alert.alert('Confirm', 'Are you sure you want to delete this offer?', [
+    showAlert('Confirm', 'Are you sure you want to delete this offer?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete', style: 'destructive', onPress: async () => {
@@ -106,10 +138,10 @@ function OffersTab() {
             if (data.success) {
               fetchOffers();
             } else {
-              Alert.alert('Error', data.error || 'Failed to delete offer');
+              showAlert('Error', data.error || 'Failed to delete offer');
             }
           } catch (err) {
-            Alert.alert('Error', err.message);
+            showAlert('Error', err.message);
           }
         }
       }
@@ -268,12 +300,12 @@ function DeliveryChargesTab() {
       });
       const data = await res.json();
       if (data.success) {
-        Alert.alert('Success', 'Delivery settings updated!');
+        showAlert('Success', 'Delivery settings updated!');
       } else {
-        Alert.alert('Error', 'Failed to update!');
+        showAlert('Error', 'Failed to update!');
       }
     } catch {
-      Alert.alert('Error', 'Failed to update!');
+      showAlert('Error', 'Failed to update!');
     }
     setLoading(false);
   };

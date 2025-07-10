@@ -29,6 +29,26 @@ export default function CartScreen({ navigation, route }) {
   const [editingIndex, setEditingIndex] = useState(null);
   const [loading, setLoading] = useState(false);
   const [variantQuantities, setVariantQuantities] = useState({});
+  const [blinkSelectAddress, setBlinkSelectAddress] = useState(false);
+  const blinkRef = React.useRef();
+
+  const triggerBlink = () => {
+    let count = 0;
+    clearInterval(blinkRef.current);
+    setBlinkSelectAddress(true);
+    blinkRef.current = setInterval(() => {
+      setBlinkSelectAddress(prev => !prev);
+      count += 1;
+      if (count >= 6) { // 6 toggles = ~2 seconds if interval is 333ms
+        clearInterval(blinkRef.current);
+        setBlinkSelectAddress(false);
+      }
+    }, 333);
+  };
+
+  React.useEffect(() => {
+    return () => clearInterval(blinkRef.current);
+  }, []);
 
   // Coupon state
   const [couponCode, setCouponCode] = useState('');
@@ -39,6 +59,38 @@ export default function CartScreen({ navigation, route }) {
 
   // Delivery charge (always free for now)
   const [deliveryChargeSetting, setDeliveryChargeSetting] = useState({ delivery_charge: 0, free_delivery_limit: 0 });
+
+
+
+  function showAlert(title, message, buttons) {
+  if (Platform.OS === 'web') {
+    if (buttons && buttons.length > 1) {
+      const okBtn = buttons.find(
+        b =>
+          b.style === 'destructive' ||
+          (b.text && (
+            b.text.toLowerCase().includes('ok') ||
+            b.text.toLowerCase().includes('yes') ||
+            b.text.toLowerCase().includes('remove') ||
+            b.text.toLowerCase().includes('delete')
+          ))
+      );
+      const cancelBtn = buttons.find(
+        b => b.style === 'cancel' || (b.text && b.text.toLowerCase().includes('cancel'))
+      );
+      const result = window.confirm(`${title ? title + '\n' : ''}${message || ''}`);
+      if (result && okBtn && okBtn.onPress) okBtn.onPress();
+      if (!result && cancelBtn && cancelBtn.onPress) cancelBtn.onPress();
+    } else {
+      alert(`${title ? title + '\n' : ''}${message || ''}`);
+      if (buttons && buttons[0] && buttons[0].onPress) buttons[0].onPress();
+    }
+  } else {
+    Alert.alert(title, message, buttons);
+  }
+}
+
+
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/delivery-settings`)
@@ -101,6 +153,13 @@ export default function CartScreen({ navigation, route }) {
     fetchAddresses();
   }, [loggedInMobile]);
 
+  // Select the address by default if only one address exists
+  useEffect(() => {
+    if (addresses.length === 1 && selectedAddressIndex === null) {
+      setSelectedAddressIndex(0);
+    }
+  }, [addresses, selectedAddressIndex]);
+
 
   // Coupon logic
   useEffect(() => {
@@ -157,7 +216,7 @@ export default function CartScreen({ navigation, route }) {
     setCouponMessage('');
 
     if (newQuantity > 5) {
-      Alert.alert('Limit Reached', 'You can only add up to 5 units of each product.');
+      showAlert('Limit Reached', 'You can only add up to 5 units of each product.');
       return;
     }
     if (newQuantity <= 0) {
@@ -228,7 +287,18 @@ export default function CartScreen({ navigation, route }) {
     setAddressTouched(newTouched);
 
     if (hasError) {
-      Alert.alert('Missing Fields', 'Please fill in all required fields (Name, Mobile, Pincode, Address, Locality).');
+      showAlert('Missing Fields', 'Please fill in all required fields (Name, Mobile, Pincode, Address, Locality).');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE_URL}/pincodes`);
+      const validPincodes = await res.json();
+      if (!Array.isArray(validPincodes) || !validPincodes.includes(pincode)) {
+        showAlert('Delivery Not Available', `Currently we are not delivering to pincode ${pincode}.`);
+        return;
+      }
+    } catch (e) {
+      showAlert('Error', 'Could not validate pincode. Please try again.');
       return;
     }
 
@@ -278,9 +348,10 @@ export default function CartScreen({ navigation, route }) {
         if (!response.ok) throw new Error('Failed to add address');
         savedAddress = await response.json();
         setAddresses(prev => [...prev, savedAddress]);
+        showAlert('Success', 'Address added successfully!');
       }
     } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to save address to database.');
+      showAlert('Error', error.message || 'Failed to save address to database.');
       return;
     }
 
@@ -293,7 +364,7 @@ export default function CartScreen({ navigation, route }) {
   };
 
   const removeAddress = (index) => {
-    Alert.alert(
+    showAlert(
       'Remove Address',
       'Are you sure you want to remove this address?',
       [
@@ -305,14 +376,13 @@ export default function CartScreen({ navigation, route }) {
             try {
               const addressToRemove = addresses[index];
               if (addressToRemove.id) {
-              const res = await fetch(`${API_BASE_URL}/addresses/${addressToRemove.id}`, { method: 'DELETE' });
-              const data = await res.json();
-              if (!res.ok) {
-                // Show backend error message (e.g. pending orders)
-                Alert.alert('Cannot Remove Address', data.message || 'Failed to remove address from database.');
-                return;
+                const res = await fetch(`${API_BASE_URL}/addresses/${addressToRemove.id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (!res.ok) {
+                  showAlert('Cannot Remove Address', data.message || 'Failed to remove address from database.');
+                  return;
+                }
               }
-            }
               setAddresses(prev => {
                 const updated = [...prev];
                 updated.splice(index, 1);
@@ -321,7 +391,7 @@ export default function CartScreen({ navigation, route }) {
               if (selectedAddressIndex === index) setSelectedAddressIndex(null);
               else if (selectedAddressIndex > index) setSelectedAddressIndex(selectedAddressIndex - 1);
             } catch (error) {
-              Alert.alert('Error', error.message || 'Failed to remove address from database.');
+              showAlert('Error', error.message || 'Failed to remove address from database.');
             }
           },
         },
@@ -359,51 +429,42 @@ export default function CartScreen({ navigation, route }) {
 
   function confirmSelectedAddress() {
     if (selectedAddressIndex === null) {
-      Alert.alert('No Address Selected', 'Please select one address.');
+      showAlert('No Address Selected', 'Please select one address.');
       return;
     }
     setShowSelectAddressModal(false);
   }
 
   const proceedToPayment = async () => {
-  if (cart.length === 0) {
-    Alert.alert('Cart Empty', 'Please add items to your cart before proceeding.');
-    return;
-  }
-  if (selectedAddressIndex === null) {
-    Alert.alert('No Delivery Address', 'Please select a delivery address.');
-    return;
-  }
-  const selectedAddress = addresses[selectedAddressIndex];
-  const cleanMobile = (loggedInMobile || '').replace(/^\+91/, '').replace(/\D/g, '').slice(-10);
-
-  // --- Pincode validation using /pincodes endpoint ---
-  const pincode = selectedAddress.pincode;
-  try {
-    const res = await fetch(`${API_BASE_URL}/pincodes`);
-    const validPincodes = await res.json();
-    if (!Array.isArray(validPincodes) || !validPincodes.includes(pincode)) {
-      Alert.alert('Delivery Not Available', `Currently we are not delivering to pincode ${pincode}.`);
+    if (cart.length === 0) {
+      showAlert('Cart Empty', 'Please add items to your cart before proceeding.');
       return;
     }
-  } catch (e) {
-    Alert.alert('Error', 'Could not validate pincode. Please try again.');
-    return;
-  }
+    if (selectedAddressIndex === null) {
+      setBlinkSelectAddress(true);
+      setTimeout(() => setBlinkSelectAddress(false), 2000);
+      return;
+    }
+    const selectedAddress = addresses[selectedAddressIndex];
+    const cleanMobile = (loggedInMobile || '').replace(/^\+91/, '').replace(/\D/g, '').slice(-10);
 
-  navigation.navigate('Payment', {
-    cart,
-    userMobile: cleanMobile,
-    selectedAddress,
-    totalAmount: finalAmount + deliveryCharge, // include delivery charge
-    originalAmount: totalAmount,
-    discount,
-    couponCode,
-    user_id: loggedInUserId,
-    deliveryCharge,
-    freeDeliveryLimit: FREE_DELIVERY_LIMIT,
-  });
-};
+    // --- Pincode validation using /pincodes endpoint ---
+    const pincode = selectedAddress.pincode;
+    
+
+    navigation.navigate('Payment', {
+      cart,
+      userMobile: cleanMobile,
+      selectedAddress,
+      totalAmount: finalAmount + deliveryCharge, // include delivery charge
+      originalAmount: totalAmount,
+      discount,
+      couponCode,
+      user_id: loggedInUserId,
+      deliveryCharge,
+      freeDeliveryLimit: FREE_DELIVERY_LIMIT,
+    });
+  };
 
   const editAddress = async (index) => {
     const addr = addresses[index];
@@ -412,14 +473,14 @@ export default function CartScreen({ navigation, route }) {
       const res = await fetch(`${API_BASE_URL}/addresses/${addr.id}/pending-orders`);
       const data = await res.json();
       if (data.hasPending) {
-        Alert.alert(
+        showAlert(
           'Cannot Edit Address',
           'This address is linked to pending orders and cannot be edited.'
         );
         return;
       }
     } catch (e) {
-      Alert.alert('Error', 'Could not check pending orders for this address.');
+      showAlert('Error', 'Could not check pending orders for this address.');
       return;
     }
 
@@ -517,16 +578,25 @@ export default function CartScreen({ navigation, route }) {
   return (
     <View style={styles.container}>
       {/* Address Card at Top */}
-      <View style={styles.addressCard}>
+      <View
+        style={[
+          styles.addressCard,
+          blinkSelectAddress && styles.blinkBorder
+        ]}
+      >
         {selectedAddressIndex !== null && addresses[selectedAddressIndex] ? (
           <>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: 'bold' }}>
-                Deliver to: <Text style={{ color: '#222' }}>{addresses[selectedAddressIndex].name}</Text>
+              <Text style={{ fontWeight: 'bold', color: '#fff' }}>
+                Deliver to: <Text>{addresses[selectedAddressIndex].name}</Text>
                 {addresses[selectedAddressIndex].pincode ? `, ${addresses[selectedAddressIndex].pincode}` : ''}
                 <Text style={styles.homeBadge}> HOME </Text>
               </Text>
-              <Text style={{ color: '#555', marginTop: 2 }} numberOfLines={2} ellipsizeMode="tail">
+              <Text
+                style={{ color: '#fff', marginTop: 2 }} // <-- changed from #555 to #fff
+                numberOfLines={2}
+                ellipsizeMode="tail"
+              >
                 {(() => {
                   const addr = addresses[selectedAddressIndex];
                   let fullAddress = '';
@@ -553,8 +623,24 @@ export default function CartScreen({ navigation, route }) {
             </TouchableOpacity>
           </>
         ) : (
-          <TouchableOpacity style={styles.selectAddressBtn} onPress={() => setShowSelectAddressModal(true)}>
-            <Text style={{ color: '#007bff', fontWeight: 'bold' }}>Select Delivery Address</Text>
+          <TouchableOpacity
+            style={styles.selectAddressBtn}
+            activeOpacity={1}
+            onPress={() => {
+              if (selectedAddressIndex === null) {
+                triggerBlink();
+              }
+              setShowSelectAddressModal(true);
+            }}
+          >
+            <Text
+              style={[
+                { color: '#fff', fontWeight: 'bold', fontSize: 18 },
+                blinkSelectAddress && { color: '#b71c1c', backgroundColor: '#ffebee', borderRadius: 6, paddingHorizontal: 8 }
+              ]}
+            >
+              Select Delivery Address
+            </Text>
           </TouchableOpacity>
         )}
       </View>
@@ -664,7 +750,7 @@ export default function CartScreen({ navigation, route }) {
             style={[styles.orderButton, { marginVertical: 10, backgroundColor: '#007bff' }]}
             onPress={() => {
               if (editingIndex === null && addresses.length >= 5) {
-                Alert.alert('Limit Reached', 'You can only save up to 5 addresses.');
+                showAlert('Limit Reached', 'You can only save up to 5 addresses.');
                 return;
               }
               setEditingIndex(null);
@@ -871,12 +957,16 @@ export default function CartScreen({ navigation, route }) {
           </Text>
         </View>
       )}
-
-
+      
       <TouchableOpacity
         style={[styles.proceedButton, selectedAddressIndex === null && styles.proceedButtonDisabled]}
-        onPress={proceedToPayment}
-        disabled={selectedAddressIndex === null}
+        onPress={() => {
+          if (selectedAddressIndex === null) {
+            triggerBlink();
+          } else {
+            proceedToPayment();
+          }
+        }}
       >
         <Text style={styles.proceedButtonText}>Proceed To Payment</Text>
       </TouchableOpacity>
@@ -889,7 +979,7 @@ const styles = StyleSheet.create({
   addressCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#00BFFF',
     borderRadius: 8,
     padding: 12,
     marginBottom: 0,
@@ -900,6 +990,13 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     borderWidth: 1,
     borderColor: '#eee',
+  },
+  blinkBorder: {
+    borderColor: '#FF8800',
+    borderWidth: 2,
+    shadowColor: '#ff9500',
+    shadowOpacity: 0.7,
+    shadowRadius: 6,
   },
   selectAddressBtn: {
     flex: 1,

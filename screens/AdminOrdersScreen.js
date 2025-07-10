@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useLayoutEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, TextInput, TouchableOpacity, Platform } from 'react-native';
 import axios from 'axios';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -11,6 +11,35 @@ import * as Clipboard from 'expo-clipboard';
 const Tab = createMaterialTopTabNavigator();
 
 const tabNames = ['Order Pending', 'Delivered', 'Cancelled'];
+
+// --- Cross-platform alert utility ---
+function showAlert(title, message, buttons) {
+  if (Platform.OS === 'web') {
+    if (buttons && buttons.length > 1) {
+      const okBtn = buttons.find(
+        b =>
+          b.style === 'destructive' ||
+          (b.text && (
+            b.text.toLowerCase().includes('ok') ||
+            b.text.toLowerCase().includes('yes') ||
+            b.text.toLowerCase().includes('remove') ||
+            b.text.toLowerCase().includes('delete')
+          ))
+      );
+      const cancelBtn = buttons.find(
+        b => b.style === 'cancel' || (b.text && b.text.toLowerCase().includes('cancel'))
+      );
+      const result = window.confirm(`${title ? title + '\n' : ''}${message || ''}`);
+      if (result && okBtn && okBtn.onPress) okBtn.onPress();
+      if (!result && cancelBtn && cancelBtn.onPress) cancelBtn.onPress();
+    } else {
+      window.alert(`${title ? title + '\n' : ''}${message || ''}`);
+      if (buttons && buttons[0] && buttons[0].onPress) buttons[0].onPress();
+    }
+  } else {
+    Alert.alert(title, message, buttons);
+  }
+}
 
 function OrdersTab({ orders, productMap, status, updateOrderStatus, onOrderPress }) {
   const [search, setSearch] = useState('');
@@ -120,13 +149,13 @@ export default function AdminOrdersScreen({ navigation, route }) {
         });
         setProductMap(map);
       })
-      .catch(() => Alert.alert('Error', 'Failed to load orders or products'))
+      .catch(() => showAlert('Error', 'Failed to load orders or products'))
       .finally(() => setLoading(false));
   };
 
   const updateOrderStatus = async (orderId, status = 'Delivered') => {
     try {
-      Alert.alert(
+      showAlert(
         'Confirm',
         status === 'Delivered'
           ? 'Are you sure you want to mark this order as Delivered?'
@@ -137,16 +166,15 @@ export default function AdminOrdersScreen({ navigation, route }) {
             text: 'Yes',
             onPress: async () => {
               await axios.put(`${API_BASE_URL}/orders/${orderId}/status`, { status });
-              Alert.alert('Success', status === 'Delivered' ? 'Order marked as Delivered' : 'Order Cancelled');
+              showAlert('Success', status === 'Delivered' ? 'Order marked as Delivered' : 'Order Cancelled');
               fetchOrders();
             },
           },
-        ],
-        { cancelable: true }
+        ]
       );
       return;
     } catch (err) {
-      Alert.alert('Error', 'Failed to update order status');
+      showAlert('Error', 'Failed to update order status');
     }
   };
 

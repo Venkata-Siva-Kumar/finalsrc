@@ -9,19 +9,106 @@ import {
   FlatList,
   Image,
   ScrollView,
-  ActivityIndicator
+  ActivityIndicator,
+  Platform,
+  Modal
 } from 'react-native';
 import axios from 'axios';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { Picker } from '@react-native-picker/picker';
 import { API_BASE_URL } from '../config';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { Modal } from 'react-native'; 
 const Tab = createMaterialTopTabNavigator();
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { pickAndCompressImage, formatDate, toApiDate } from '../admin/image_compress';
 import { useFocusEffect } from '@react-navigation/native';
-import AppHeaderIcon from './AppHeaderIcon'; 
+import AppHeaderIcon from './AppHeaderIcon';
+
+// --- Cross-platform alert/popup utility with web modal fallback ---
+function showAlert(title, message, buttons) {
+  if (Platform.OS === 'web') {
+    // If there are multiple options, show a custom modal
+    if (buttons && buttons.length > 1) {
+      // Create a simple modal using the DOM for web
+      // Remove any existing modal
+      const existing = document.getElementById('web-alert-modal');
+      if (existing) existing.remove();
+
+      const modal = document.createElement('div');
+      modal.id = 'web-alert-modal';
+      modal.style.position = 'fixed';
+      modal.style.top = '0';
+      modal.style.left = '0';
+      modal.style.width = '100vw';
+      modal.style.height = '100vh';
+      modal.style.background = 'rgba(0,0,0,0.3)';
+      modal.style.display = 'flex';
+      modal.style.alignItems = 'center';
+      modal.style.justifyContent = 'center';
+      modal.style.zIndex = '9999';
+
+      const box = document.createElement('div');
+      box.style.background = '#fff';
+      box.style.borderRadius = '12px';
+      box.style.padding = '24px';
+      box.style.minWidth = '300px';
+      box.style.maxWidth = '90vw';
+      box.style.boxShadow = '0 2px 16px rgba(0,0,0,0.15)';
+      box.style.textAlign = 'center';
+
+      if (title) {
+        const titleEl = document.createElement('div');
+        titleEl.style.fontWeight = 'bold';
+        titleEl.style.fontSize = '18px';
+        titleEl.style.marginBottom = '12px';
+        titleEl.innerText = title;
+        box.appendChild(titleEl);
+      }
+      if (message) {
+        const msgEl = document.createElement('div');
+        msgEl.style.marginBottom = '18px';
+        msgEl.innerText = message;
+        box.appendChild(msgEl);
+      }
+
+      const btnRow = document.createElement('div');
+      btnRow.style.display = 'flex';
+      btnRow.style.justifyContent = 'center';
+      btnRow.style.gap = '12px';
+
+      buttons.forEach((b, idx) => {
+        const btn = document.createElement('button');
+        btn.innerText = b.text;
+        btn.style.padding = '10px 18px';
+        btn.style.borderRadius = '6px';
+        btn.style.border = 'none';
+        btn.style.fontWeight = 'bold';
+        btn.style.cursor = 'pointer';
+        btn.style.fontSize = '15px';
+        btn.style.background = b.style === 'destructive'
+          ? '#ff3b30'
+          : b.style === 'cancel'
+          ? '#ccc'
+          : '#007aff';
+        btn.style.color = b.style === 'cancel' ? '#333' : '#fff';
+        btn.onclick = async () => {
+          document.body.removeChild(modal);
+          if (b.onPress) await b.onPress();
+        };
+        btnRow.appendChild(btn);
+      });
+
+      box.appendChild(btnRow);
+      modal.appendChild(box);
+      document.body.appendChild(modal);
+    } else {
+      alert(`${title ? title + '\n' : ''}${message || ''}`);
+      if (buttons && buttons[0] && buttons[0].onPress) buttons[0].onPress();
+    }
+  } else {
+    Alert.alert(title, message, buttons);
+  }
+}
 
 function CategoryManager() {
   const [categories, setCategories] = useState([]);
@@ -39,7 +126,7 @@ function CategoryManager() {
   };
   const saveEditCatName = async () => {
     if (!editCatName.trim()) {
-      Alert.alert('Error', 'Category name cannot be empty');
+      showAlert('Error', 'Category name cannot be empty');
       return;
     }
     try {
@@ -48,12 +135,12 @@ function CategoryManager() {
       setEditCatId(null);
       setEditCatName('');
       await fetchCategories();
-      Alert.alert('Success', 'Category name updated!');
+      showAlert('Success', 'Category name updated!');
     } catch (err) {
-      Alert.alert('Error', err?.response?.data?.error || 'Failed to update category name');
+      showAlert('Error', err?.response?.data?.error || 'Failed to update category name');
     }
   };
-  
+
   const fetchCategories = async () => {
     try {
       const res = await axios.get(`${API_BASE_URL}/categories`);
@@ -69,7 +156,7 @@ function CategoryManager() {
 
   // Use utility for picking category image
   const pickCategoryImage = () => {
-    Alert.alert(
+    showAlert(
       'Select Image',
       'Choose an option to add a category image:',
       [
@@ -94,7 +181,7 @@ function CategoryManager() {
 
   const handleAddCategory = async () => {
     if (!newCatName.trim() || !newCatImage) {
-      Alert.alert('Error', 'Category name and image are required');
+      showAlert('Error', 'Category name and image are required');
       return;
     }
     setLoading(true);
@@ -106,15 +193,15 @@ function CategoryManager() {
       setNewCatName('');
       setNewCatImage('');
       await fetchCategories();
-      Alert.alert('Success', 'Category added!');
+      showAlert('Success', 'Category added!');
     } catch (err) {
-      Alert.alert('Error', err?.response?.data?.error || 'Failed to add category');
+      showAlert('Error', err?.response?.data?.error || 'Failed to add category');
     }
     setLoading(false);
   };
 
   const handleDeleteCategory = (catId) => {
-    Alert.alert(
+    showAlert(
       'Delete Category',
       'Are you sure you want to delete this category?',
       [
@@ -126,9 +213,9 @@ function CategoryManager() {
             try {
               await axios.delete(`${API_BASE_URL}/categories/${catId}`);
               await fetchCategories();
-              Alert.alert('Success', 'Category deleted!');
+              showAlert('Success', 'Category deleted!');
             } catch (err) {
-              Alert.alert('Error', err?.response?.data?.error || 'Failed to delete category');
+              showAlert('Error', err?.response?.data?.error || 'Failed to delete category');
             }
           },
         },
@@ -138,7 +225,7 @@ function CategoryManager() {
 
   // Use utility for editing category image
   const handleEditPhoto = (catId) => {
-    Alert.alert(
+    showAlert(
       'Change Category Image',
       'Choose an option to update the category image:',
       [
@@ -153,9 +240,9 @@ function CategoryManager() {
                   image_base64: base64,
                 });
                 await fetchCategories();
-                Alert.alert('Success', 'Category photo updated!');
+                showAlert('Success', 'Category photo updated!');
               } catch (err) {
-                Alert.alert('Error', err?.response?.data?.error || 'Failed to update photo');
+                showAlert('Error', err?.response?.data?.error || 'Failed to update photo');
               }
             }
           },
@@ -170,9 +257,9 @@ function CategoryManager() {
                   image_base64: base64,
                 });
                 await fetchCategories();
-                Alert.alert('Success', 'Category photo updated!');
+                showAlert('Success', 'Category photo updated!');
               } catch (err) {
-                Alert.alert('Error', err?.response?.data?.error || 'Failed to update photo');
+                showAlert('Error', err?.response?.data?.error || 'Failed to update photo');
               }
             }
           },
@@ -183,36 +270,36 @@ function CategoryManager() {
 
   return (
     <>
-    <FlatList
-      contentContainerStyle={{ padding: 16 }}
-      data={categories}
-      keyExtractor={item => item.id?.toString() || item.name}
-      ListHeaderComponent={
-        <>
-          <Text style={styles.labelName}>Category Name</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Category Name"
-            placeholderTextColor="#888"
-            value={newCatName}
-            onChangeText={setNewCatName}
-          />
-          <TouchableOpacity style={styles.button} onPress={pickCategoryImage}>
-            <Text style={styles.buttonText}>{newCatImage ? 'Change Photo' : 'Add Photo'}</Text>
-          </TouchableOpacity>
-          {newCatImage ? (
-            <Image
-              source={{ uri: `data:image/jpeg;base64,${newCatImage}` }}
-              style={{ width: 100, height: 100, borderRadius: 10, alignSelf: 'center', marginBottom: 12 }}
+      <FlatList
+        contentContainerStyle={{ padding: 16 }}
+        data={categories}
+        keyExtractor={item => item.id?.toString() || item.name}
+        ListHeaderComponent={
+          <>
+            <Text style={styles.labelName}>Category Name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Category Name"
+              placeholderTextColor="#888"
+              value={newCatName}
+              onChangeText={setNewCatName}
             />
-          ) : null}
-          <TouchableOpacity style={styles.button} onPress={handleAddCategory} disabled={loading}>
-            <Text style={styles.buttonText}>Add Category</Text>
-          </TouchableOpacity>
-          <Text style={[styles.subHeader, { marginTop: 20 }]}>Existing Categories</Text>
-        </>
-      }
-      renderItem={({ item }) => (
+            <TouchableOpacity style={styles.button} onPress={pickCategoryImage}>
+              <Text style={styles.buttonText}>{newCatImage ? 'Change Photo' : 'Add Photo'}</Text>
+            </TouchableOpacity>
+            {newCatImage ? (
+              <Image
+                source={{ uri: `data:image/jpeg;base64,${newCatImage}` }}
+                style={{ width: 100, height: 100, borderRadius: 10, alignSelf: 'center', marginBottom: 12 }}
+              />
+            ) : null}
+            <TouchableOpacity style={styles.button} onPress={handleAddCategory} disabled={loading}>
+              <Text style={styles.buttonText}>Add Category</Text>
+            </TouchableOpacity>
+            <Text style={[styles.subHeader, { marginTop: 20 }]}>Existing Categories</Text>
+          </>
+        }
+        renderItem={({ item }) => (
           <View style={[styles.card, { flexDirection: 'row', alignItems: 'center' }]}>
             <Image
               source={{
@@ -238,10 +325,10 @@ function CategoryManager() {
             </TouchableOpacity>
           </View>
         )}
-      ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20 }}>No categories found.</Text>}
-    />
+        ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20 }}>No categories found.</Text>}
+      />
 
-    <Modal
+      <Modal
         visible={showEditModal}
         transparent
         animationType="fade"
@@ -301,20 +388,20 @@ function AddProductTab({ onProductAdded }) {
   ]);
 
   useFocusEffect(
-  React.useCallback(() => {
-    axios
-      .get(`${API_BASE_URL}/categories`)
-      .then((res) => setCategories(res.data))
-      .catch(() => setCategories([]));
-  }, [])
-);
+    React.useCallback(() => {
+      axios
+        .get(`${API_BASE_URL}/categories`)
+        .then((res) => setCategories(res.data))
+        .catch(() => setCategories([]));
+    }, [])
+  );
 
   // Use utility for picking product image
   const pickImageFromGallery = async () => {
     const base64 = await pickAndCompressImage('gallery', 600, 0.1);
     if (base64) {
       setImageBase64(base64);
-      Alert.alert('Image ready', 'Image uploaded and compressed!');
+      showAlert('Image ready', 'Image uploaded and compressed!');
     }
   };
 
@@ -322,7 +409,7 @@ function AddProductTab({ onProductAdded }) {
     const base64 = await pickAndCompressImage('camera', 600, 0.1);
     if (base64) {
       setImageBase64(base64);
-      Alert.alert('Image ready', 'Image captured and compressed!');
+      showAlert('Image ready', 'Image captured and compressed!');
     }
   };
 
@@ -345,7 +432,7 @@ function AddProductTab({ onProductAdded }) {
     );
 
     if (!name.trim() || !category_id || !validVariants.length || !imageBase64) {
-      Alert.alert('Error', 'Fill all fields and add atleast one variant');
+      showAlert('Error', 'Fill all fields and add atleast one variant');
       return;
     }
     try {
@@ -361,7 +448,7 @@ function AddProductTab({ onProductAdded }) {
         image_base64: imageBase64,
         mime_type: 'image/jpeg',
       });
-      Alert.alert('Success', 'Product and image added!');
+      showAlert('Success', 'Product and image added!');
       setName('');
       setDescription('');
       setCategoryId('');
@@ -369,8 +456,7 @@ function AddProductTab({ onProductAdded }) {
       setVariants([{ quantity_value: '', price: '', mrp: '' }]);
       if (onProductAdded) onProductAdded();
     } catch (err) {
-      Alert.alert('Error', 'Product name already exists or failed to add product');
-
+      showAlert('Error', 'Product name already exists or failed to add product');
     }
   };
 
@@ -499,7 +585,7 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
     try {
       await axios.put(`${API_BASE_URL}/products/${id}/status`, { status });
     } catch (err) {
-      Alert.alert('Error', 'Failed to update product status');
+      showAlert('Error', 'Failed to update product status');
       setProducts(prev =>
         prev.map(prod =>
           prod.id === id ? { ...prod, status: status === 'enabled' ? 'disabled' : 'enabled' } : prod
@@ -511,7 +597,7 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
 
   // Use utility for changing product image
   const askImageChange = (productId) => {
-    Alert.alert(
+    showAlert(
       'Change Product Image',
       'Choose an option to update the product image:',
       [
@@ -527,10 +613,10 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
                   image_base64: base64,
                   mime_type: 'image/jpeg',
                 });
-                Alert.alert('Success', 'Product image updated!');
+                showAlert('Success', 'Product image updated!');
                 refreshProducts();
               } catch (err) {
-                Alert.alert('Error', err?.response?.data?.error || 'Failed to update product image');
+                showAlert('Error', err?.response?.data?.error || 'Failed to update product image');
               }
             }
           },
@@ -546,10 +632,10 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
                   image_base64: base64,
                   mime_type: 'image/jpeg',
                 });
-                Alert.alert('Success', 'Product image updated!');
+                showAlert('Success', 'Product image updated!');
                 refreshProducts();
               } catch (err) {
-                Alert.alert('Error', err?.response?.data?.error || 'Failed to update product image');
+                showAlert('Error', err?.response?.data?.error || 'Failed to update product image');
               }
             }
           },
@@ -580,38 +666,38 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
   };
 
   const saveEdit = async () => {
-  const validVariants = editVariants.filter(
-    v => v.quantity_value && v.price
-  );
+    const validVariants = editVariants.filter(
+      v => v.quantity_value && v.price
+    );
 
-  if (!editName.trim() || !validVariants.length) {
-    Alert.alert('Error', 'Enter valid name and at least one variant');
-    return;
-  }
-  setLoadingId('edit' + editProduct.id);
-  try {
-    await axios.put(`${API_BASE_URL}/products/${editProduct.id}`, {
-      name: editName,
-      variants: validVariants,
-      description: editDescription, 
-      category_id: editCategoryId,
-    });
-    setEditModalVisible(false);
-    setEditProduct(null);
-    refreshProducts();
-  } catch (err) {
-    const msg = err?.response?.data?.error || 'Failed to update product';
-    if (msg.toLowerCase().includes('already exists')) {
-      Alert.alert('Error', 'A product with this name already exists. Please choose a different name.');
-    } else {
-      Alert.alert('Already Exists', 'A product with the same name already exists. Please choose a different name.');
+    if (!editName.trim() || !validVariants.length) {
+      showAlert('Error', 'Enter valid name and at least one variant');
+      return;
     }
-  }
-  setLoadingId(null);
-};
+    setLoadingId('edit' + editProduct.id);
+    try {
+      await axios.put(`${API_BASE_URL}/products/${editProduct.id}`, {
+        name: editName,
+        variants: validVariants,
+        description: editDescription,
+        category_id: editCategoryId,
+      });
+      setEditModalVisible(false);
+      setEditProduct(null);
+      refreshProducts();
+    } catch (err) {
+      const msg = err?.response?.data?.error || 'Failed to update product';
+      if (msg.toLowerCase().includes('already exists')) {
+        showAlert('Error', 'A product with this name already exists. Please choose a different name.');
+      } else {
+        showAlert('Already Exists', 'A product with the same name already exists. Please choose a different name.');
+      }
+    }
+    setLoadingId(null);
+  };
 
   const removeProduct = (productId) => {
-    Alert.alert(
+    showAlert(
       'Remove Product',
       'Are you sure you want to remove this product?',
       [
@@ -625,7 +711,7 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
               await axios.delete(`${API_BASE_URL}/products/${productId}`);
               refreshProducts();
             } catch (err) {
-              Alert.alert('Error', err?.response?.data?.error || 'Failed to remove product');
+              showAlert('Error', err?.response?.data?.error || 'Failed to remove product');
             }
             setLoadingId(null);
           },
@@ -763,15 +849,6 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
               placeholder="Product Name"
               placeholderTextColor="#888"
             />
-            {/* <Text style={styles.labelPrice}>Price</Text>
-            <TextInput
-              style={styles.input}
-              value={editPrice}
-              onChangeText={setEditPrice}
-              placeholder="Price"
-              placeholderTextColor="#888"
-              keyboardType="numeric"
-            /> */}
             <Text style={styles.labelName}>Variants</Text>
             {editVariants.map((v, idx) => (
               <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
@@ -876,7 +953,6 @@ function EarningsTab() {
       }
       const res = await fetch(url);
       const data = await res.json();
-      console.log('Earnings API data:', data);
       setEarnings(data);
     } catch {
       setEarnings([]);
@@ -885,81 +961,119 @@ function EarningsTab() {
   };
 
   return (
-  <View style={{ flex: 1, padding: 16 }}>
-    <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 20 }}>
-      Total Collection: <Text style={{ color: '#28a745' }}>₹{Number(totalEarnings).toFixed(2)}</Text>
-    </Text>
-    {/* Add From Date and To Date labels above the input fields */}
-    <View style={{ flexDirection: 'row', marginBottom: 4 }}>
-      <View style={{ flex: 1, marginRight: 8 }}>
-        <Text style={{ fontSize: 17, color: '#333', marginBottom: 2,marginLeft:10 }}>From</Text>
+    <View style={{ flex: 1, padding: 16 }}>
+      <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 20 }}>
+        Total Collection: <Text style={{ color: '#28a745' }}>₹{Number(totalEarnings).toFixed(2)}</Text>
+      </Text>
+      {/* Add From Date and To Date labels above the input fields */}
+      <View style={{ flexDirection: 'row', marginBottom: 4 }}>
+        <View style={{ flex: 1, marginRight: 8 }}>
+          <Text style={{ fontSize: 17, color: '#333', marginBottom: 2,marginLeft:10 }}>From</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 17, color: '#333', marginBottom: 2,marginLeft:10 }}>To</Text>
+        </View>
+        <View style={{ width: 80 }} />
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 17, color: '#333', marginBottom: 2,marginLeft:10 }}>To</Text>
-      </View>
-      <View style={{ width: 80 }} />
-    </View>
-    <View style={{ flexDirection: 'row', marginBottom: 12 }}>
-      <TouchableOpacity
-        style={[styles.input, { flex: 1, marginRight: 8, justifyContent: 'center' }]}
-        onPress={() => setShowFromPicker(true)}
-      >
-        <Text style={{ color: fromDate ? '#333' : '#888' }}>
-          {fromDate ? formatDate(fromDate) : 'dd-mm-yyyy'}
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.input, { flex: 1, justifyContent: 'center' }]}
-        onPress={() => setShowToPicker(true)}
-      >
-        <Text style={{ color: toDate ? '#333' : '#888' }}>
-          {toDate ? formatDate(toDate) : 'dd-mm-yyyy'}
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={[styles.button, { marginLeft: 8, padding: 10 }]} onPress={fetchEarnings}>
-        <Text style={styles.buttonText}>Filter</Text>
-      </TouchableOpacity>
-    </View>
-    {showFromPicker && (
-      <DateTimePicker
-        value={fromDate ? new Date(fromDate) : new Date()}
-        mode="date"
-        display="default"
-        onChange={handleFromDateChange}
-        minimumDate={minDate} 
-        maximumDate={today}
-      />
-    )}
-    {showToPicker && (
-      <DateTimePicker
-        value={toDate ? new Date(toDate) : new Date()}
-        mode="date"
-        display="default"
-        onChange={handleToDateChange}
-        minimumDate={minDate} 
-        maximumDate={today}
-        
-      />
-    )}
-    {loading ? (
-      <ActivityIndicator size="large" color="#007aff" />
-    ) : (
-      <FlatList
-        data={earnings}
-        keyExtractor={item => item.date}
-        renderItem={({ item }) => (
-          <View style={{ padding: 12, backgroundColor: '#fff', borderRadius: 8, marginBottom: 8 }}>
-            <Text style={{ fontWeight: 'bold' }}>
-              Date: {formatDate(item.date)}
-            </Text>
-            <Text style={{ color: '#28a745', fontWeight: 'bold' }}>Earnings: ₹{item.final_amount}</Text>
-          </View>
+      <View style={{ flexDirection: 'row', marginBottom: 12 }}>
+        {Platform.OS === 'web' ? (
+          <>
+            <input
+              type="date"
+              style={{
+                flex: 1,
+                marginRight: 8,
+                padding: 12,
+                borderRadius: 8,
+                border: '1px solid #ccc',
+                fontSize: 15,
+                backgroundColor: '#fff',
+              }}
+              value={fromDate}
+              max={toDate || undefined}
+              min={toApiDate(minDate)}
+              onChange={e => setFromDate(e.target.value)}
+            />
+            <input
+              type="date"
+              style={{
+                flex: 1,
+                padding: 12,
+                borderRadius: 8,
+                border: '1px solid #ccc',
+                fontSize: 15,
+                backgroundColor: '#fff',
+              }}
+              value={toDate}
+              min={fromDate || toApiDate(minDate)}
+              max={toApiDate(today)}
+              onChange={e => setToDate(e.target.value)}
+            />
+          </>
+        ) : (
+          <>
+            <TouchableOpacity
+              style={[styles.input, { flex: 1, marginRight: 8, justifyContent: 'center' }]}
+              onPress={() => setShowFromPicker(true)}
+            >
+              <Text style={{ color: fromDate ? '#333' : '#888' }}>
+                {fromDate ? formatDate(fromDate) : 'dd-mm-yyyy'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.input, { flex: 1, justifyContent: 'center' }]}
+              onPress={() => setShowToPicker(true)}
+            >
+              <Text style={{ color: toDate ? '#333' : '#888' }}>
+                {toDate ? formatDate(toDate) : 'dd-mm-yyyy'}
+              </Text>
+            </TouchableOpacity>
+          </>
         )}
-        ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20 }}>No earnings found.</Text>}
-      />
-    )}
-  </View>
-);
+        <TouchableOpacity style={[styles.button, { marginLeft: 8, padding: 10 }]} onPress={fetchEarnings}>
+          <Text style={styles.buttonText}>Filter</Text>
+        </TouchableOpacity>
+      </View>
+      {/* Only show DateTimePicker on native */}
+      {Platform.OS !== 'web' && showFromPicker && (
+        <DateTimePicker
+          value={fromDate ? new Date(fromDate) : new Date()}
+          mode="date"
+          display="default"
+          onChange={handleFromDateChange}
+          minimumDate={minDate}
+          maximumDate={today}
+        />
+      )}
+      {Platform.OS !== 'web' && showToPicker && (
+        <DateTimePicker
+          value={toDate ? new Date(toDate) : new Date()}
+          mode="date"
+          display="default"
+          onChange={handleToDateChange}
+          minimumDate={minDate}
+          maximumDate={today}
+        />
+      )}
+      {loading ? (
+        <ActivityIndicator size="large" color="#007aff" />
+      ) : (
+        <FlatList
+          data={earnings}
+          keyExtractor={item => item.date}
+          renderItem={({ item }) => (
+            <View style={{ padding: 12, backgroundColor: '#fff', borderRadius: 8, marginBottom: 8 }}>
+              <Text style={{ fontWeight: 'bold' }}>
+                Date: {formatDate(item.date)}
+              </Text>
+              <Text style={{ color: '#28a745', fontWeight: 'bold' }}>Earnings: ₹{item.final_amount}</Text>
+            </View>
+          )}
+          ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20 }}>No earnings found.</Text>}
+        />
+      )}
+    </View>
+  );
 }
 
 function AdminHomeScreen({ navigation }) {
@@ -969,17 +1083,15 @@ function AdminHomeScreen({ navigation }) {
     axios
       .get(`${API_BASE_URL}/products`)
       .then((res) => setProducts(res.data))
-      .catch(() => Alert.alert('Error', 'Failed to load products'));
+      .catch(() => showAlert('Error', 'Failed to load products'));
   }, []);
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      //title: 'Admin',
-      
       headerRight: () => (
         <TouchableOpacity
           onPress={() => {
-            Alert.alert(
+            showAlert(
               'Logout',
               'Are you sure you want to logout?',
               [
@@ -989,8 +1101,7 @@ function AdminHomeScreen({ navigation }) {
                   style: 'destructive',
                   onPress: () => navigation.replace('AdminLogin'),
                 },
-              ],
-              { cancelable: true }
+              ]
             );
           }}
           style={{ flexDirection: 'row', alignItems: 'center' }}

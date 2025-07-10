@@ -1,9 +1,37 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
-import { API_BASE_URL } from '../config'; // Make sure this import is correct
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Platform } from 'react-native';
+import { API_BASE_URL } from '../config';
 import * as Print from 'expo-print';
-
 import getPrintHtml from './Print.js';
+
+// --- Cross-platform alert utility ---
+function showAlert(title, message, buttons) {
+  if (Platform.OS === 'web') {
+    if (buttons && buttons.length > 1) {
+      const okBtn = buttons.find(
+        b =>
+          b.style === 'destructive' ||
+          (b.text && (
+            b.text.toLowerCase().includes('ok') ||
+            b.text.toLowerCase().includes('yes') ||
+            b.text.toLowerCase().includes('remove') ||
+            b.text.toLowerCase().includes('delete')
+          ))
+      );
+      const cancelBtn = buttons.find(
+        b => b.style === 'cancel' || (b.text && b.text.toLowerCase().includes('cancel'))
+      );
+      const result = window.confirm(`${title ? title + '\n' : ''}${message || ''}`);
+      if (result && okBtn && okBtn.onPress) okBtn.onPress();
+      if (!result && cancelBtn && cancelBtn.onPress) cancelBtn.onPress();
+    } else {
+      window.alert(`${title ? title + '\n' : ''}${message || ''}`);
+      if (buttons && buttons[0] && buttons[0].onPress) buttons[0].onPress();
+    }
+  } else {
+    Alert.alert(title, message, buttons);
+  }
+}
 
 export default function OrderDetailsScreen({ route, navigation }) {
   const { order, productMap } = route.params;
@@ -20,36 +48,46 @@ export default function OrderDetailsScreen({ route, navigation }) {
       });
       const data = await res.json();
       if (res.ok) {
-        Alert.alert('Success', `Order marked as ${status}.`, [
+        showAlert('Success', `Order marked as ${status}.`, [
           { text: 'OK', onPress: () => navigation.goBack() }
         ]);
       } else {
-        Alert.alert('Error', data.message || 'Failed to update order status.');
+        showAlert('Error', data.message || 'Failed to update order status.');
       }
     } catch (err) {
-      Alert.alert('Error', 'Failed to update order status.');
+      showAlert('Error', 'Failed to update order status.');
     }
     setLoading(false);
   };
 
   const handlePrint = async () => {
-    if (printing) return; // Prevent multiple prints
+    if (printing) return;
     setPrinting(true);
 
     try {
-     // console.log('Print button pressed', order);
       if (!order.items || order.items.length === 0) {
-        Alert.alert('No Products', 'No products found in this order to print.');
+        showAlert('No Products', 'No products found in this order to print.');
         return;
       }
       const html = getPrintHtml(order, productMap); // Use the helper!
-      await Print.printAsync({ html });
+      // For web: open print dialog with the same HTML as mobile
+      if (Platform.OS === 'web') {
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(html);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+          printWindow.print();
+        }, 300);
+      } else {
+        await Print.printAsync({ html });
+      }
     } catch (err) {
       console.error('Print error:', err);
-      Alert.alert('Print Error', err.message || 'Failed to print');
+      showAlert('Print Error', err.message || 'Failed to print');
     }
     finally {
-    setPrinting(false); // Always reset, even if cancelled or error
+      setPrinting(false);
     }
   };
 

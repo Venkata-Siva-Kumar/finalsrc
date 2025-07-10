@@ -611,11 +611,11 @@ export default function HomeScreen({ navigation, route }) {
               height: bannerHeight,
               minHeight: bannerHeight,
               paddingVertical: 0,
-              paddingHorizontal: 0,
+              paddingHorizontal: 15,
             }}
             style={{
               height: bannerHeight,
-              minHeight: bannerHeight+20,
+              minHeight: bannerHeight,
               backgroundColor: 'transparent',
             }}
           >
