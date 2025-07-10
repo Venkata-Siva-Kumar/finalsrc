@@ -23,6 +23,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { pickAndCompressImage, formatDate, toApiDate } from '../admin/image_compress';
 import { useFocusEffect } from '@react-navigation/native';
 import AppHeaderIcon from './AppHeaderIcon';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // --- Cross-platform alert/popup utility with web modal fallback ---
 function showAlert(title, message, buttons) {
@@ -1099,7 +1100,7 @@ function AdminHomeScreen({ navigation }) {
                 {
                   text: 'Logout',
                   style: 'destructive',
-                  onPress: () => navigation.replace('AdminLogin'),
+                  onPress: () => handleAdminLogout(),
                 },
               ]
             );
@@ -1119,6 +1120,13 @@ function AdminHomeScreen({ navigation }) {
   React.useEffect(() => {
     refreshProducts();
   }, [refreshProducts]);
+
+  // Example logout handler for admin
+  const handleAdminLogout = async () => {
+    await AsyncStorage.removeItem('isAdmin');
+    await AsyncStorage.removeItem('admin');
+    navigation.replace('Login'); // Go to user login screen
+  };
 
   return (
     <Tab.Navigator>

@@ -117,8 +117,16 @@ export default function App() {
 
   useEffect(() => {
     const checkLogin = async () => {
+      const isAdmin = await AsyncStorage.getItem('isAdmin');
+      const admin = await AsyncStorage.getItem('admin');
       const user = await AsyncStorage.getItem('user');
-      setInitialRoute(user ? 'Main' : 'Login');
+      if (isAdmin === 'true' && admin) {
+        setInitialRoute('AdminMainTabs');
+      } else if (user) {
+        setInitialRoute('Main');
+      } else {
+        setInitialRoute('Login');
+      }
     };
     checkLogin();
   }, []);

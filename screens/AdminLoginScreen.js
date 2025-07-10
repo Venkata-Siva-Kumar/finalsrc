@@ -13,10 +13,11 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function showAlert(title, message) {
   if (Platform.OS === 'web') {
-    window.alert(`${title ? title + '\n' : ''}${message}`);
+    alert(title ? `${title}\n${message || ''}` : message);
   } else {
     Alert.alert(title, message);
   }
@@ -45,7 +46,10 @@ export default function AdminLoginScreen({ navigation }) {
         password,
       });
 
-      //Alert.alert('Success', response.data.message);
+      // Save admin login state
+      await AsyncStorage.setItem('isAdmin', 'true');
+      await AsyncStorage.setItem('admin', JSON.stringify({ mobile }));
+
       navigation.replace('AdminMainTabs', { mobile });
     } catch (error) {
       showAlert(
