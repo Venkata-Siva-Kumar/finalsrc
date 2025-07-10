@@ -1,5 +1,5 @@
 # finalsrc
-with out firebase login kirana app
+OTP Signup with What'sApp Business API 
 
 # Developer
 Venkata Siva Kumar Mariyala
@@ -11,7 +11,7 @@ Aiven
 render.com
 
 # Application Type
-Expo
+React Native - Expo
 
 # to generate .apk file
 npm install -g eas-cli
