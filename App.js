@@ -27,6 +27,8 @@ import OrderDetailsUserScreen from './screens/OrderDetailsUserScreen';
 import BannerTab from './screens/BannerTab'; // <-- Import your BannerTab
 import AdminOfferScreen from './screens/AdminOfferScreen';  
 import TermsScreen from './screens/TermsScreen';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -35,6 +37,7 @@ function MainTabs({route}) {
   const userMobile = route.params?.userMobile;
   const { cart } = useContext(CartContext);
   const cartCount = cart.length;
+  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -51,6 +54,11 @@ function MainTabs({route}) {
         },
         tabBarActiveTintColor: "#007bff",
         tabBarInactiveTintColor: "gray",
+        tabBarStyle: {
+          height: 50 + insets.bottom,
+          paddingBottom: insets.bottom,
+          paddingTop: 5,
+        },
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} initialParams={{ userMobile }}  options={{headerTitleAlign: 'center',headerTitleStyle: { fontWeight: 'bold', fontSize: 25 },headerLeft: () => <AppHeaderIcon />,}} />
@@ -134,29 +142,31 @@ export default function App() {
   if (initialRoute === null) return null; // or a splash screen
 
   return (
-    <UserProvider>
-      <CartProvider>
-        <NavigationContainer>
-          <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}  >
-            <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: true }}  />
-            <Stack.Screen name="AdminLogin" component={AdminLoginScreen} options={{ headerShown: true }} />
-            <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: true }} />
-            <Stack.Screen name="Main" component={MainTabs}  options={{  }} />
-            <Stack.Screen name="AdminMainTabs" component={AdminTabs} options={{ headerShown: false }} />
-            <Stack.Screen name="Payment" component={PaymentScreen} options={{ headerShown: true }}/>
-            {/* <Stack.Screen name="OTPLogin" component={OTPLoginScreen} options={{ headerShown: true}} /> */}
-            <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: true}}/>
-            <Stack.Screen name="Payment2" component={Payment} options={{ headerShown: true }} />
-            <Stack.Screen name="AdminHome" component={AdminHomeScreen} options={{ headerShown: true }} />
-            <Stack.Screen name="Orders" component={OrdersScreen} options={{ headerShown: true ,headerRight: () => <AppHeaderIcon />}} />
-            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ headerShown: true }} />  
-            <Stack.Screen name="ContactCenter" component={ContactCenterScreen} options={{ headerShown: true, title: "Contact Center",}} />
-            <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} options={{ headerShown: true, title: "Order Details" }} /> 
-            <Stack.Screen name="OrderDetailsUser" component={OrderDetailsUserScreen} options={{ headerShown: true, title: "Order Details" }} />
-            <Stack.Screen name="Terms" component={TermsScreen} options={{ headerShown: true,title: 'Terms and Conditions' }} />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </CartProvider>
-    </UserProvider>
+    <SafeAreaProvider>
+      <UserProvider>
+        <CartProvider>
+          <NavigationContainer>
+            <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}  >
+              <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: true }}  />
+              <Stack.Screen name="AdminLogin" component={AdminLoginScreen} options={{ headerShown: true }} />
+              <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: true }} />
+              <Stack.Screen name="Main" component={MainTabs}  options={{  }} />
+              <Stack.Screen name="AdminMainTabs" component={AdminTabs} options={{ headerShown: false }} />
+              <Stack.Screen name="Payment" component={PaymentScreen} options={{ headerShown: true }}/>
+              {/* <Stack.Screen name="OTPLogin" component={OTPLoginScreen} options={{ headerShown: true}} /> */}
+              <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: true}}/>
+              <Stack.Screen name="Payment2" component={Payment} options={{ headerShown: true }} />
+              <Stack.Screen name="AdminHome" component={AdminHomeScreen} options={{ headerShown: true }} />
+              <Stack.Screen name="Orders" component={OrdersScreen} options={{ headerShown: true ,headerRight: () => <AppHeaderIcon />}} />
+              <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ headerShown: true }} />  
+              <Stack.Screen name="ContactCenter" component={ContactCenterScreen} options={{ headerShown: true, title: "Contact Center",}} />
+              <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} options={{ headerShown: true, title: "Order Details" }} /> 
+              <Stack.Screen name="OrderDetailsUser" component={OrderDetailsUserScreen} options={{ headerShown: true, title: "Order Details" }} />
+              <Stack.Screen name="Terms" component={TermsScreen} options={{ headerShown: true,title: 'Terms and Conditions' }} />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </CartProvider>
+      </UserProvider>
+    </SafeAreaProvider>
   );
 }

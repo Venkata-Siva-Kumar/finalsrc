@@ -131,27 +131,47 @@ export default function ForgotPasswordScreen({ navigation }) {
               A One-Time Password has been sent to {mobile.replace(/^(\d{2})(\d{4})(\d{2})$/, '$1****$3')}
             </Text>
             <View style={styles.otpInputRow}>
-              {otp.map((digit, idx) => (
-                <TextInput
-                  key={idx}
-                  ref={otpInputs[idx]}
-                  style={styles.otpInput}
-                  keyboardType="number-pad"
-                  maxLength={1}
-                  value={digit}
-                  onChangeText={value => handleOtpChange(value, idx)}
-                  onFocus={() => {
-                    if (otp[idx] === '') {
-                      const newOtp = [...otp];
-                      for (let i = idx + 1; i < 6; i++) newOtp[i] = '';
-                      setOtp(newOtp);
-                    }
-                  }}
-                  autoFocus={idx === 0}
-                  returnKeyType={idx === 5 ? 'done' : 'next'}
-                  blurOnSubmit={false}
-                />
-              ))}
+              {Platform.OS === 'web'
+                ? otp.map((digit, idx) => (
+                    <input
+                      key={idx}
+                      ref={otpInputs[idx]}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      style={{
+                        width: 38,
+                        height: 48,
+                        borderWidth: '1.5px',
+                        borderColor: '#ddd',
+                        borderRadius: 8,
+                        marginLeft: 6,
+                        marginRight: 6,
+                        textAlign: 'center',
+                        fontSize: 22,
+                        backgroundColor: '#f7f7f7',
+                      }}
+                      value={digit}
+                      onChange={e => handleOtpChange(e.target.value, idx)}
+                      autoFocus={idx === 0}
+                      id={`otp-input-forgot-${idx}`}
+                    />
+                  ))
+                : otp.map((digit, idx) => (
+                    <TextInput
+                      key={idx}
+                      ref={otpInputs[idx]}
+                      style={styles.otpInput}
+                      keyboardType="number-pad"
+                      maxLength={1}
+                      value={digit}
+                      onChangeText={value => handleOtpChange(value, idx)}
+                      autoFocus={idx === 0}
+                      returnKeyType={idx === 5 ? 'done' : 'next'}
+                      blurOnSubmit={false}
+                    />
+                  ))
+              }
             </View>
             <TouchableOpacity
               style={styles.validateButton}

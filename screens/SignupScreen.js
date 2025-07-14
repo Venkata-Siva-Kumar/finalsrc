@@ -471,29 +471,28 @@ export default function SignupScreen({ navigation, route }) {
               </Text>
               <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 28 }}>
                 {otpDigits.map((digit, idx) => (
-                  <TextInput
+                  <input
                     key={idx}
                     ref={otpInputs[idx]}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
                     style={{
                       width: 38,
                       height: 48,
                       borderWidth: 1.5,
                       borderColor: '#ddd',
                       borderRadius: 8,
-                      marginHorizontal: 6,
+                      marginLeft: 6,
+                      marginRight: 6,
                       textAlign: 'center',
                       fontSize: 22,
                       backgroundColor: '#f7f7f7',
-                      paddingVertical: 0,
-                      textAlignVertical: 'center'
                     }}
-                    keyboardType="number-pad"
-                    maxLength={1}
                     value={digit}
-                    onChangeText={value => handleOtpDigitChange(value, idx)}
+                    onChange={e => handleOtpDigitChange(e.target.value, idx)}
                     autoFocus={idx === 0}
-                    returnKeyType={idx === 5 ? 'done' : 'next'}
-                    blurOnSubmit={false}
+                    id={`otp-input-signup-${idx}`}
                   />
                 ))}
               </View>
