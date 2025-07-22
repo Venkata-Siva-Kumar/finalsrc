@@ -307,6 +307,7 @@ app.post('/admin-login', (req, res) => {
 });
 
 
+// ...existing code...
 app.get('/orders', (req, res) => {
   const { user_id, mobile } = req.query;
   let sql = `
@@ -336,14 +337,10 @@ app.get('/orders', (req, res) => {
     db.query(
       `SELECT 
          oi.*, 
-         p.name AS product_name, 
-         v.quantity_value, 
-         v.price AS variant_price,
-         v.mrp AS variant_mrp,
+         p.name AS product_name,
          img.image_data, img.mime_type
        FROM order_items oi
-       JOIN products p ON oi.productId = p.id
-       JOIN product_variants v ON oi.variantId = v.id
+       LEFT JOIN products p ON oi.productId = p.id
        LEFT JOIN images img ON img.product_id = p.id
        WHERE oi.orderId IN (?)`,
       [orderIds],
@@ -354,11 +351,11 @@ app.get('/orders', (req, res) => {
         items.forEach(item => {
           if (!itemsByOrder[item.orderId]) itemsByOrder[item.orderId] = [];
           itemsByOrder[item.orderId].push({
-            name: item.product_name,
+            name: item.product_name || `Product #${item.productId}`,
             quantity: item.quantity,
-            price: item.variant_price,
-            mrp: item.variant_mrp,
-            quantity_value: item.quantity_value,
+            price: item.price,
+            mrp: item.mrp || item.price,
+            quantity_value: item.quantity_value || '',
             product_id: item.productId,
             variant_id: item.variantId,
             image_url: item.image_data
@@ -394,6 +391,7 @@ app.get('/orders', (req, res) => {
     );
   });
 });
+// ...existing code...
 
 
 // Add a new address
