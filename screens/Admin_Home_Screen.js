@@ -648,7 +648,7 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
   const openEditModal = (product) => {
     setEditProduct(product);
     setEditName(product.name);
-    setEditVariants(product.variants || []);
+    setEditVariants((product.variants || []).map(v => ({...v,old_variant_id: v.id })));
     setEditCategoryId(product.category_id ? String(product.category_id) : '');
     setEditDescription(product.description || '');
     setEditModalVisible(true);
@@ -669,7 +669,20 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
   const saveEdit = async () => {
     const validVariants = editVariants.filter(
       v => v.quantity_value && v.price
-    );
+    ).map(v => ({
+      quantity_value: v.quantity_value,
+      price: v.price,
+      mrp: v.mrp,
+      old_variant_id: v.old_variant_id // Always send this!
+    }));
+
+    for (const v of validVariants) {
+  if (isNaN(Number(v.price)) || Number(v.price) > 999999) {
+    showAlert('Error', 'Please enter a valid price below 10 lakh.');
+    setLoadingId(null);
+    return;
+  }
+}
 
     if (!editName.trim() || !validVariants.length) {
       showAlert('Error', 'Enter valid name and at least one variant');

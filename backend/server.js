@@ -177,13 +177,15 @@ app.post('/place-order', (req, res) => {
         }
 
         // Insert order items
-        const orderItemsSql = `INSERT INTO order_items (orderId, productId, variantId, quantity, price) VALUES ?`;
+        const orderItemsSql = `INSERT INTO order_items (orderId, productId, variantId, quantity, price,mrp,quantity_value) VALUES ?`;
         const orderItemsValues = items.map(item => [
           orderId,
           item.productId,
           item.variantId,
           item.quantity,
-          item.price
+          item.price,
+          item.mrp,
+          item.quantity_value
         ]);
 
         db.query(orderItemsSql, [orderItemsValues], (err, itemsResult) => {
@@ -354,7 +356,7 @@ app.get('/orders', (req, res) => {
             name: item.product_name || `Product #${item.productId}`,
             quantity: item.quantity,
             price: item.price,
-            mrp: item.mrp || item.price,
+            mrp: item.mrp ,
             quantity_value: item.quantity_value || '',
             product_id: item.productId,
             variant_id: item.variantId,
@@ -735,9 +737,29 @@ app.put('/products/:id', (req, res) => {
             db.query(
               'INSERT INTO product_variants (product_id, quantity_value, price, mrp) VALUES ?',
               [values],
-              (err3) => {
+              (err3, result) => {
                 if (err3) return res.status(500).json({ error: 'DB error' });
-                res.json({ success: true });
+
+                // --- Fix cart variant_id mapping ---
+                // Get all new variants for this product
+                db.query('SELECT id, quantity_value FROM product_variants WHERE product_id=?', [id], (err4, newVariants) => {
+                  if (err4) return res.status(500).json({ error: 'DB error' });
+
+                  // For each new variant, update cart rows with old variant_id and same product_id/quantity_value
+                  newVariants.forEach(nv => {
+                    // Find the old variant with the same quantity_value
+                    const oldVariant = variants.find(v => v.quantity_value === nv.quantity_value && v.old_variant_id);
+                    if (oldVariant && oldVariant.old_variant_id) {
+                      db.query(
+                        'UPDATE cart SET variant_id=? WHERE product_id=? AND variant_id=?',
+                        [nv.id, id, oldVariant.old_variant_id]
+                      );
+                    }
+                  });
+
+                  res.json({ success: true });
+                });
+                // --- End fix ---
               }
             );
           } else {
@@ -779,8 +801,6 @@ app.get('/earnings', (req, res) => {
   }
   sql += ' GROUP BY DATE(orderDate) ORDER BY DATE(orderDate) DESC';
 
-  console.log('Earnings SQL:', sql, params); // <-- Add this line
-
   db.query(sql, params, (err, results) => {
     if (err) {
       console.error('Earnings DB error:', err);
@@ -803,6 +823,7 @@ app.get('/cart', (req, res) => {
       p.name, 
       v.quantity_value, 
       v.price, 
+      v.mrp,
       COALESCE(i.image_data, NULL) AS image_data, 
       i.mime_type
     FROM cart c
@@ -819,6 +840,7 @@ app.get('/cart', (req, res) => {
       name: row.name,
       quantity_value: row.quantity_value,
       price: row.price,
+      mrp: row.mrp,
       quantity: row.quantity,
       image_url: row.image_data
         ? `data:${row.mime_type || 'image/jpeg'};base64,${row.image_data.toString('base64')}`

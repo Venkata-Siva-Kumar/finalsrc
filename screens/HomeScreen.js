@@ -199,6 +199,7 @@ export default function HomeScreen({ navigation, route }) {
             name: product.name,
             quantity_value: variant.quantity_value,
             price: variant.price,
+            mrp: variant.mrp,
             quantity,
             image_url: product.image_url,
           },
@@ -248,14 +249,27 @@ export default function HomeScreen({ navigation, route }) {
           source={{ uri: item.image_url || 'https://via.placeholder.com/60' }}
           style={styles.productImage}
         />
-        <View style={styles.infoColumn}>
-          <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-          {/* Add this line for description */}
+        <View style={[styles.infoColumn, { minWidth: 0, flexShrink: 1, flex: 1, marginRight: 8 }]}>
+          <Text style={styles.name} numberOfLines={1} ellipsizeMode="tail">{item.name}</Text>
           {item.description ? (
-            <Text style={styles.description} numberOfLines={2}>{item.description}</Text>
+            <Text style={styles.description} numberOfLines={2} ellipsizeMode="tail">{item.description}</Text>
           ) : null}
-          {validVariants.length > 0 ? (
-            <Text style={styles.price}>
+          {validVariants.length === 1 ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+              <Text style={{ fontSize: 14, color: '#555', marginRight: 6 }}>
+                {validVariants[0].quantity_value}
+              </Text>
+              {validVariants[0].mrp && Number(validVariants[0].mrp) > Number(validVariants[0].price) ? (
+                <Text style={{ textDecorationLine: 'line-through', color: '#888', marginRight: 6 }}>
+                  ₹{Number(validVariants[0].mrp).toFixed(2)}
+                </Text>
+              ) : null}
+              <Text style={{ color: '#222', fontWeight: 'bold', fontSize: 14 }}>
+                ₹{Number(validVariants[0].price).toFixed(2)}
+              </Text>
+            </View>
+          ) : validVariants.length > 1 ? (
+            <Text style={styles.price} numberOfLines={1} ellipsizeMode="tail">
               {validVariants[0].quantity_value} • ₹{Number(validVariants[0].price).toFixed(2)}
             </Text>
           ) : (

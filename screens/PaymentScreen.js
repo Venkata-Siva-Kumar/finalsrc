@@ -36,7 +36,7 @@ export default function PaymentScreen({ navigation, route }) {
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [countdown, setCountdown] = useState(null);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
-  const cart = route?.params?.cart || [];
+ const { cart } = useContext(CartContext);
   const userMobile = route?.params?.userMobile || "9876543210";
   const selectedAddress = route?.params?.selectedAddress || {};
   const address_id = selectedAddress.id || selectedAddress.address_id || null;
@@ -83,7 +83,9 @@ export default function PaymentScreen({ navigation, route }) {
           productId: item.product_id || item.id,
           variantId: item.variant_id,
           quantity: item.quantity,
-          price: item.price
+          price: item.price,
+          mrp: item.mrp,
+          quantity_value: item.quantity_value
         })),
         coupon_code: route.params?.couponCode || null,
         discount: route.params?.discount || 0,

@@ -39,6 +39,7 @@ export default function OrderDetailsUserScreen({ route }) {
       <Text style={styles.value}>
         {order.deliveryAddress && typeof order.deliveryAddress === 'object'
           ? [
+              order.deliveryAddress.name,
               order.deliveryAddress.address && typeof order.deliveryAddress.address === 'object'
                 ? [
                     order.deliveryAddress.address.house,

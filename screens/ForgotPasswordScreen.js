@@ -128,7 +128,7 @@ export default function ForgotPasswordScreen({ navigation }) {
           <View style={styles.otpModalContent}>
             <Text style={styles.otpTitle}>Please enter the One-Time Password to verify your account</Text>
             <Text style={styles.otpSubtitle}>
-              A One-Time Password has been sent to {mobile.replace(/^(\d{2})(\d{4})(\d{2})$/, '$1****$3')}
+              A One-Time Password has been sent to {mobile.replace(/^(\d{2})(\d{4})(\d{2})$/, '$1****$3')} Through WhatsApp.
             </Text>
             <View style={styles.otpInputRow}>
               {Platform.OS === 'web'

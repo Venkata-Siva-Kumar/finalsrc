@@ -31,7 +31,7 @@ export default function CartScreen({ navigation, route }) {
   const [variantQuantities, setVariantQuantities] = useState({});
   const [blinkSelectAddress, setBlinkSelectAddress] = useState(false);
   const blinkRef = React.useRef();
-
+  const totalMRP = cart.reduce((sum, item) => sum + (item.mrp ? item.mrp * item.quantity : item.price * item.quantity), 0);
   const triggerBlink = () => {
     let count = 0;
     clearInterval(blinkRef.current);
@@ -451,9 +451,9 @@ export default function CartScreen({ navigation, route }) {
     // --- Pincode validation using /pincodes endpoint ---
     const pincode = selectedAddress.pincode;
     
-
+    const refreshedCart = await fetch(`${API_BASE_URL}/cart?user_id=${loggedInUserId}`).then(res => res.json());
     navigation.navigate('Payment', {
-      cart,
+      cart : refreshedCart,
       userMobile: cleanMobile,
       selectedAddress,
       totalAmount: finalAmount + deliveryCharge, // include delivery charge
@@ -516,45 +516,7 @@ export default function CartScreen({ navigation, route }) {
     );
   };
 
-  // This function is used by your HomeScreen/modal, not directly here
-  const handleAddVariantToCart = (product, variant) => {
-    const quantity = variantQuantities[variant.id] || 1;
-    setCart(prevCart => {
-      const existing = prevCart.find(
-        item => item.product_id === product.id && item.variant_id === variant.id
-      );
-      if (existing) {
-        return prevCart.map(item =>
-          item.product_id === product.id && item.variant_id === variant.id
-            ? { ...item, quantity }
-            : item
-        );
-      } else {
-        return [
-          ...prevCart,
-          {
-            product_id: product.id,
-            variant_id: variant.id,
-            name: product.name,
-            quantity_value: variant.quantity_value,
-            price: variant.price,
-            quantity,
-            image_url: product.image_url,
-          },
-        ];
-      }
-    });
-
-    // Sync with backend
-    if (loggedInUserId) {
-      axios.post(`${API_BASE_URL}/cart`, {
-        user_id: loggedInUserId,
-        product_id: product.id,
-        variant_id: variant.id,
-        quantity,
-      }).catch(() => {});
-    }
-  };
+ 
 
   const fetchPincodeDetails = async (pincode) => {
   if (!/^\d{6}$/.test(pincode)) return;
@@ -708,6 +670,12 @@ export default function CartScreen({ navigation, route }) {
         shadowRadius: 4,
       }}>
         <Text style={{ fontWeight: "bold", fontSize: 16, marginBottom: 7 }}>Price Details</Text>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 3 }}>
+          <Text >MRP Price</Text>
+          <Text style={{ color: "#888", textDecorationLine: "line-through" }}>
+            ₹{totalMRP.toFixed(2)}
+          </Text>
+        </View>
         <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 3 }}>
           <Text>Price ({totalItems} item{totalItems > 1 ? "s" : ""})</Text>
           <Text>₹{totalAmount.toFixed(2)}</Text>
@@ -964,6 +932,7 @@ export default function CartScreen({ navigation, route }) {
           if (selectedAddressIndex === null) {
             triggerBlink();
           } else {
+            
             proceedToPayment();
           }
         }}
