@@ -85,40 +85,50 @@ export default function HomeScreen({ navigation, route }) {
     }
   };
 
-  const fetchProducts = async () => {
-    let url;
-    setLoading(true);
-    setError(null);
-    try {
-      let cacheKey = '';
-      if (searchQuery.trim() !== '') {
-        url = `${API_BASE_URL}/products?search=${encodeURIComponent(searchQuery.trim())}`;
-        cacheKey = `products_search_${searchQuery.trim()}`;
-      } else if (selectedCategoryId) {
-        url = `${API_BASE_URL}/products?category_id=${selectedCategoryId}`;
-        cacheKey = `products_cat_${selectedCategoryId}`;
-      }
-
-      if (cacheKey) {
-        const cached = await AsyncStorage.getItem(cacheKey);
-        if (cached) setProducts(JSON.parse(cached));
-      }
-
-      if (url) {
-        const res = await axios.get(url);
-        const enabledProducts = res.data.filter((p) => p.status === 'enabled');
-        setProducts(enabledProducts);
-        AsyncStorage.setItem(cacheKey, JSON.stringify(enabledProducts));
-      } else {
-        setProducts([]);
-      }
-    } catch {
-      setError('Failed to load products');
-      Alert.alert('Error', 'Failed to load products');
-    } finally {
-      setLoading(false);
+  // ...existing code...
+const fetchProducts = async () => {
+  let url;
+  setLoading(true);
+  setError(null);
+  try {
+    let cacheKey = '';
+    if (searchQuery.trim() !== '') {
+      url = `${API_BASE_URL}/products?search=${encodeURIComponent(searchQuery.trim())}`;
+      cacheKey = `products_search_${searchQuery.trim()}`;
+    } else if (selectedCategoryId) {
+      url = `${API_BASE_URL}/products?category_id=${selectedCategoryId}`;
+      cacheKey = `products_cat_${selectedCategoryId}`;
     }
-  };
+
+    // Try cache first
+    if (cacheKey) {
+      const cached = await AsyncStorage.getItem(cacheKey);
+      const cachedTime = await AsyncStorage.getItem(cacheKey + '_time');
+      const now = Date.now();
+      if (cached && cachedTime && now - Number(cachedTime) < 5 * 60 * 1000) {
+        setProducts(JSON.parse(cached));
+        setLoading(false);
+      }
+    }
+
+    // Always fetch in background to update cache
+    if (url) {
+      const res = await axios.get(url);
+      const enabledProducts = res.data.filter((p) => p.status === 'enabled');
+      setProducts(enabledProducts);
+      AsyncStorage.setItem(cacheKey, JSON.stringify(enabledProducts));
+      AsyncStorage.setItem(cacheKey + '_time', Date.now().toString());
+    } else {
+      setProducts([]);
+    }
+  } catch {
+    setError('Failed to load products');
+    Alert.alert('Error', 'Failed to load products');
+  } finally {
+    setLoading(false);
+  }
+};
+// ...existing code...
 
   useFocusEffect(
     React.useCallback(() => {
