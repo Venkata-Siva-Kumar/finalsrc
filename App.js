@@ -7,7 +7,7 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import ProfileScreen from './screens/ProfileScreen';
 import Payment from "./screens/Payment";
 import LoginScreen from "./screens/LoginScreen";
-import SignupScreen from "./screens/SignupScreen";
+//import SignupScreen from "./screens/SignupScreen";
 import HomeScreen from "./screens/HomeScreen";
 import CartScreen from "./screens/CartScreen";
 import PaymentScreen from "./screens/PaymentScreen";
@@ -149,7 +149,7 @@ export default function App() {
             <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}  >
               <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: true }}  />
               <Stack.Screen name="AdminLogin" component={AdminLoginScreen} options={{ headerShown: true }} />
-              <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: true }} />
+              {/* <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: true }} /> */}
               <Stack.Screen name="Main" component={MainTabs}  options={{  }} />
               <Stack.Screen name="AdminMainTabs" component={AdminTabs} options={{ headerShown: false }} />
               <Stack.Screen name="Payment" component={PaymentScreen} options={{ headerShown: true }}/>

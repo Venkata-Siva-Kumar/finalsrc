@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useLayoutEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, Platform, ScrollView,KeyboardAvoidingView } from 'react-native';
 import { CartContext } from './CartContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -142,10 +142,10 @@ export default function ProfileScreen({ route, navigation }) {
       showAlert('Invalid DOB', 'Check for valid dob.');
       return;
     }
-    if (!isAtLeast18YearsOld(dob)) {
-      showAlert('Age Restriction', 'You must be at least 18 years old.');
-      return;
-    }
+    // if (!isAtLeast18YearsOld(dob)) {
+    //   showAlert('Age Restriction', 'You must be at least 18 years old.');
+    //   return;
+    // }
 
     setLoading(true);
     try {
@@ -184,6 +184,36 @@ export default function ProfileScreen({ route, navigation }) {
       setDob(`${day}-${month}-${year}`);
     }
   };
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          style={{ marginRight: 18 }}
+          onPress={() => {
+            // Confirm logout
+            if (Platform.OS === 'web') {
+              if (window.confirm('Are you sure you want to logout?')) {
+                navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+              }
+            } else {
+              Alert.alert(
+                'Logout',
+                'Are you sure you want to logout?',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Logout', style: 'destructive', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) }
+                ]
+              );
+            }
+          }}
+        >
+          <Ionicons name="log-out-outline" size={28} color="#d9534f" />
+        </TouchableOpacity>
+      ),
+      title: 'Profile',
+    });
+  }, [navigation]);
 
   return (
     <KeyboardAvoidingView
@@ -238,7 +268,7 @@ export default function ProfileScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
       <TextInput
-        placeholder="user@gmail.com (optional)"
+        placeholder="user@gmail.com"
         placeholderTextColor="#888"
         keyboardType="email-address"
         style={styles.input}
@@ -308,7 +338,7 @@ export default function ProfileScreen({ route, navigation }) {
         Delete Account
       </Text>
       <Text style={{ marginBottom: 12, textAlign: 'center' }}>
-        Enter your mobile and password to confirm account deletion.
+        Enter your mobile number to confirm account deletion.
       </Text>
       <TextInput
         placeholder="Mobile Number"
@@ -319,54 +349,12 @@ export default function ProfileScreen({ route, navigation }) {
         keyboardType="phone-pad"
         maxLength={10}
       />
-      <View style={{ position: 'relative' }}>
-        <TextInput
-          placeholder="Password"
-          placeholderTextColor="#888"
-          style={[styles.input, { color: '#222' }]}
-          value={deletePassword}
-          onChangeText={setDeletePassword}
-          secureTextEntry={!deletePasswordVisible}
-        />
-        <TouchableOpacity
-          style={{ position: 'absolute', right: 12, top: 14 }}
-          onPress={() => setDeletePasswordVisible(v => !v)}
-        >
-          <Ionicons
-            name={deletePasswordVisible ? 'eye' : 'eye-off'}
-            size={20}
-            color="#888"
-          />
-        </TouchableOpacity>
-      </View>
-      <View style={{ position: 'relative' }}>
-        <TextInput
-          placeholder="Confirm Password"
-          placeholderTextColor="#888"
-          style={[styles.input, { color: '#222' }]}
-          value={deleteConfirmPassword}
-          onChangeText={setDeleteConfirmPassword}
-          secureTextEntry={!deleteConfirmPasswordVisible}
-        />
-        <TouchableOpacity
-          style={{ position: 'absolute', right: 12, top: 14 }}
-          onPress={() => setDeleteConfirmPasswordVisible(v => !v)}
-        >
-          <Ionicons
-            name={deleteConfirmPasswordVisible ? 'eye' : 'eye-off'}
-            size={20}
-            color="#888"
-          />
-        </TouchableOpacity>
-      </View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
         <TouchableOpacity
           style={[styles.button, { backgroundColor: '#ccc', flex: 1, marginRight: 8 }]}
           onPress={() => {
             setShowDeleteModal(false);
             setDeleteMobile('');
-            setDeletePassword('');
-            setDeleteConfirmPassword('');
           }}
           disabled={deleting}
         >
@@ -375,44 +363,52 @@ export default function ProfileScreen({ route, navigation }) {
         <TouchableOpacity
           style={[styles.button, { backgroundColor: '#d9534f', flex: 1, marginLeft: 8 }]}
           onPress={async () => {
-            if (!deleteMobile || !deletePassword || !deleteConfirmPassword) {
-              showAlert('Error', 'Please fill all fields.');
-              return;
-            }
-            if (deletePassword !== deleteConfirmPassword) {
-              showAlert('Error', 'Passwords do not match.');
+            if (!deleteMobile) {
+              showAlert('Error', 'Please enter your mobile number.');
               return;
             }
             if (deleteMobile !== userMobile) {
               showAlert('Mobile Number Mismatch', 'The entered mobile number does not match your logged-in mobile number.');
               return;
             }
-            setDeleting(true);
-            try {
-              const response = await fetch(`${API_BASE_URL}/delete-user`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  mobile: deleteMobile,
-                  password: deletePassword,
-                }),
-              });
-              const data = await response.json();
-              if (data.success) {
-                showAlert('Account Deleted', 'Your account has been deleted.', [
-                  { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) }
-                ]);
-              } else {
-                showAlert('Delete Failed', data.message || 'Could not delete account.');
+            // Cross-platform confirm dialog
+            const confirmDelete = async () => {
+              setDeleting(true);
+              try {
+                const response = await fetch(`${API_BASE_URL}/delete-user`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ mobile: deleteMobile }),
+                });
+                const data = await response.json();
+                if (data.success) {
+                  showAlert('Account Deleted', 'Your account has been deleted.');
+                  navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+                } else {
+                  showAlert('Delete Failed', data.message || 'Could not delete account.');
+                }
+              } catch (e) {
+                showAlert('Error', 'Failed to delete account.');
               }
-            } catch (e) {
-              showAlert('Error', 'Failed to delete account.');
+              setDeleting(false);
+              setShowDeleteModal(false);
+              setDeleteMobile('');
+            };
+
+            if (Platform.OS === 'web') {
+              if (window.confirm('Are you sure you want to delete your account?')) {
+                await confirmDelete();
+              }
+            } else {
+              Alert.alert(
+                'Confirm Deletion',
+                'Are you sure you want to delete your account?',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Delete', style: 'destructive', onPress: confirmDelete }
+                ]
+              );
             }
-            setDeleting(false);
-            setShowDeleteModal(false);
-            setDeleteMobile('');
-            setDeletePassword('');
-            setDeleteConfirmPassword('');
           }}
           disabled={deleting}
         >

@@ -27,72 +27,72 @@ db.connect(err => {
   console.log('✅ Connected to database');
 });
 
-app.post('/signup', (req, res) => {
-  const { fname, lname, mobile, password, gender, email, dob } = req.body;
-  if (!fname || !lname || !mobile || !password || !gender) {
-    return res.status(400).json({ message: 'Missing required fields' });
-  }
-  if (!dob) {
-    return res.status(400).json({ message: 'Date of birth is required.' });
-  }
+// app.post('/signup', (req, res) => {
+//   const { fname, lname, mobile, password, gender, email, dob } = req.body;
+//   if (!fname || !lname || !mobile || !password || !gender) {
+//     return res.status(400).json({ message: 'Missing required fields' });
+//   }
+//   if (!dob) {
+//     return res.status(400).json({ message: 'Date of birth is required.' });
+//   }
   
-  db.query('SELECT * FROM users WHERE mobile = ?', [mobile], async (err, results) => {
-    if (err) return res.status(500).json({ message: 'Database error' });
-    if (results.length > 0) {
-      const user = results[0];
-      if (user.activity_status === 'inactive') {
-        // Reactivate and update user
-        const hashedPassword = await bcrypt.hash(password, 10);
-        db.query(
-          `UPDATE users SET fname=?, lname=?, password=?, gender=?, email=?, dob=?, activity_status='active' WHERE mobile=?`,
-          [fname, lname, hashedPassword, gender, email || null, dob || null, mobile],
-          err2 => {
-            if (err2) return res.status(500).json({ message: 'Error reactivating user' });
-            // Delete OTP after successful reactivation
-            db.query('DELETE FROM user_otps WHERE mobile = ?', [mobile]);
-            return res.json({ message: 'Account reactivated and updated successfully' });
-          }
-        );
-      } else {
-        return res.status(400).json({ message: 'User already exists' });
-      }
-    } else {
-      // Normal signup
-      const hashedPassword = await bcrypt.hash(password, 10);
-      db.query(
-        `INSERT INTO users (fname, lname, mobile, password, gender, email, dob, activity_status) VALUES (?, ?, ?, ?, ?, ?, ?, 'active')`,
-        [fname, lname, mobile, hashedPassword, gender, email || null, dob || null],
-        err => {
-          if (err) return res.status(500).json({ message: 'Error inserting user' });
-          // Delete OTP after successful signup
-          db.query('DELETE FROM user_otps WHERE mobile = ?', [mobile]);
-          res.json({ message: 'User registered successfully' });
-        }
-      );
-    }
-  });
-});
+//   db.query('SELECT * FROM users WHERE mobile = ?', [mobile], async (err, results) => {
+//     if (err) return res.status(500).json({ message: 'Database error' });
+//     if (results.length > 0) {
+//       const user = results[0];
+//       if (user.activity_status === 'inactive') {
+//         // Reactivate and update user
+//         const hashedPassword = await bcrypt.hash(password, 10);
+//         db.query(
+//           `UPDATE users SET fname=?, lname=?, password=?, gender=?, email=?, dob=?, activity_status='active' WHERE mobile=?`,
+//           [fname, lname, hashedPassword, gender, email || null, dob || null, mobile],
+//           err2 => {
+//             if (err2) return res.status(500).json({ message: 'Error reactivating user' });
+//             // Delete OTP after successful reactivation
+//             db.query('DELETE FROM user_otps WHERE mobile = ?', [mobile]);
+//             return res.json({ message: 'Account reactivated and updated successfully' });
+//           }
+//         );
+//       } else {
+//         return res.status(400).json({ message: 'User already exists' });
+//       }
+//     } else {
+//       // Normal signup
+//       const hashedPassword = await bcrypt.hash(password, 10);
+//       db.query(
+//         `INSERT INTO users (fname, lname, mobile, password, gender, email, dob, activity_status) VALUES (?, ?, ?, ?, ?, ?, ?, 'active')`,
+//         [fname, lname, mobile, hashedPassword, gender, email || null, dob || null],
+//         err => {
+//           if (err) return res.status(500).json({ message: 'Error inserting user' });
+//           // Delete OTP after successful signup
+//           db.query('DELETE FROM user_otps WHERE mobile = ?', [mobile]);
+//           res.json({ message: 'User registered successfully' });
+//         }
+//       );
+//     }
+//   });
+// });
 
 
 // ✅ Login route
-app.post('/login', (req, res) => {
-  const { mobile, password } = req.body;
-  db.query('SELECT * FROM users WHERE mobile = ?', [mobile], (err, results) => {
-    if (err) return res.status(500).json({ message: 'Database error' });
-    if (results.length === 0) return res.status(401).json({ message: 'Invalid mobile number' });
+// app.post('/login', (req, res) => {
+//   const { mobile, password } = req.body;
+//   db.query('SELECT * FROM users WHERE mobile = ?', [mobile], (err, results) => {
+//     if (err) return res.status(500).json({ message: 'Database error' });
+//     if (results.length === 0) return res.status(401).json({ message: 'Invalid mobile number' });
 
-    const user = results[0];
-    if (user.activity_status !== 'active') {
-      return res.status(403).json({ message: 'Account is inactive. Please sign up again to reactivate.' });
-    }
-    const hashedPassword = user.password;
-    bcrypt.compare(password, hashedPassword, (err, isMatch) => {
-      if (err) return res.status(500).json({ message: 'Password comparison error' });
-      if (!isMatch) return res.status(401).json({ message: 'Invalid password' });
-      res.json({ message: 'Login successful' });
-    });
-  });
-});
+//     const user = results[0];
+//     if (user.activity_status !== 'active') {
+//       return res.status(403).json({ message: 'Account is inactive. Please sign up again to reactivate.' });
+//     }
+//     const hashedPassword = user.password;
+//     bcrypt.compare(password, hashedPassword, (err, isMatch) => {
+//       if (err) return res.status(500).json({ message: 'Password comparison error' });
+//       if (!isMatch) return res.status(401).json({ message: 'Invalid password' });
+//       res.json({ message: 'Login successful' });
+//     });
+//   });
+// });
 
 app.get('/products', (req, res) => {
   const { category_id, search } = req.query;
@@ -897,8 +897,6 @@ app.delete('/cart/clear', (req, res) => {
   });
 });
 
-// ...existing code...
-
 // ✅ Get all pincodes
 app.get('/pincodes', (req, res) => {
   db.query('SELECT pincode FROM pincode', (err, results) => {
@@ -952,32 +950,53 @@ app.delete('/products/:id', (req, res) => {
 });
 
 
+// app.post('/delete-user', (req, res) => {
+//   const { mobile, password } = req.body;
+//   if (!mobile || !password) {
+//     return res.status(400).json({ success: false, message: 'Mobile and password required' });
+//   }
+//   db.query('SELECT * FROM users WHERE mobile = ?', [mobile], (err, results) => {
+//     if (err) return res.status(500).json({ success: false, message: 'Database error' });
+//     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
+
+//     const userId = results[0].id;
+//     const hashedPassword = results[0].password;
+//     bcrypt.compare(password, hashedPassword, (err, isMatch) => {
+//       if (err) return res.status(500).json({ success: false, message: 'Password comparison error' });
+//       if (!isMatch) return res.status(401).json({ success: false, message: 'Invalid password' });
+
+//       db.query(
+//         `UPDATE users SET fname = '', lname = '', password = '', dob = NULL ,email = NULL, activity_status = 'inactive' WHERE id = ?`,
+//         [userId],
+//         (err2) => {
+//           console.log(`User with mobile ${mobile} marked as inactive`,err2);
+//           if (err2) return res.status(500).json({ success: false, message: 'Error updating user status' });
+          
+//           res.json({ success: true });
+//         }
+//       );
+//     });
+//   });
+// });
+
 app.post('/delete-user', (req, res) => {
-  const { mobile, password } = req.body;
-  if (!mobile || !password) {
-    return res.status(400).json({ success: false, message: 'Mobile and password required' });
+  const { mobile } = req.body;
+  if (!mobile) {
+    return res.status(400).json({ success: false, message: 'Mobile required' });
   }
   db.query('SELECT * FROM users WHERE mobile = ?', [mobile], (err, results) => {
     if (err) return res.status(500).json({ success: false, message: 'Database error' });
     if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found' });
 
     const userId = results[0].id;
-    const hashedPassword = results[0].password;
-    bcrypt.compare(password, hashedPassword, (err, isMatch) => {
-      if (err) return res.status(500).json({ success: false, message: 'Password comparison error' });
-      if (!isMatch) return res.status(401).json({ success: false, message: 'Invalid password' });
-
-      db.query(
-        `UPDATE users SET fname = '', lname = '', password = '', dob = NULL ,email = NULL, activity_status = 'inactive' WHERE id = ?`,
-        [userId],
-        (err2) => {
-          console.log(`User with mobile ${mobile} marked as inactive`,err2);
-          if (err2) return res.status(500).json({ success: false, message: 'Error updating user status' });
-          
-          res.json({ success: true });
-        }
-      );
-    });
+    db.query(
+      `UPDATE users SET fname = '', lname = '', password = '', dob = NULL ,email = NULL, activity_status = 'inactive' WHERE id = ?`,
+      [userId],
+      (err2) => {
+        if (err2) return res.status(500).json({ success: false, message: 'Error updating user status' });
+        res.json({ success: true });
+      }
+    );
   });
 });
 
@@ -1205,11 +1224,12 @@ app.put('/delivery-settings', (req, res) => {
   );
 });
 
-// Helper to generate random 5-digit OTP
+// Helper to generate random 6-digit OTP
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+// Send OTP for login/registration
 app.post('/send-otp', async (req, res) => {
   const { mobile } = req.body;
   if (!mobile) return res.status(400).json({ success: false, message: 'Mobile required' });
@@ -1229,7 +1249,7 @@ app.post('/send-otp', async (req, res) => {
     async (err) => {
       if (err) return res.status(500).json({ success: false, message: 'DB error' });
 
-      // Send WhatsApp message via Facebook API
+      // Send WhatsApp message via Facebook API (already present in your code)
       try {
         await axios.post(
           'https://graph.facebook.com/v23.0/707119972482974/messages',
@@ -1246,7 +1266,6 @@ app.post('/send-otp', async (req, res) => {
                   type: "body",
                   parameters: [
                     { type: "text", text: otp },
-                    
                   ]
                 },
                 {
@@ -1276,6 +1295,7 @@ app.post('/send-otp', async (req, res) => {
   );
 });
 
+// Verify OTP and check if user exists
 app.post('/verify-otp', (req, res) => {
   const { mobile, otp } = req.body;
   if (!mobile || !otp) return res.status(400).json({ success: false, message: 'Mobile and OTP required' });
@@ -1287,114 +1307,76 @@ app.post('/verify-otp', (req, res) => {
       if (err) return res.status(500).json({ success: false, message: 'DB error' });
       if (!rows.length) return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
 
-      // Mark OTP as verified (do not delete here)
+      // Mark OTP as verified
       db.query('UPDATE user_otps SET verified = 1 WHERE mobile = ?', [mobile], (err2) => {
         if (err2) return res.status(500).json({ success: false, message: 'Failed to verify OTP' });
-        res.json({ success: true });
+
+        // Check if user exists and is active
+        db.query('SELECT * FROM users WHERE mobile = ? AND activity_status = "active"', [mobile], (err3, userRows) => {
+          if (err3) return res.status(500).json({ success: false, message: 'DB error' });
+          if (userRows.length > 0) {
+            // Existing user, return user data
+            return res.json({ success: true, newUser: false, user: userRows[0] });
+          } else {
+            // New user, prompt for name
+            return res.json({ success: true, newUser: true });
+          }
+        });
       });
     }
   );
 });
 
-app.post('/forgot-password/send-otp', (req, res) => {
-  const { mobile } = req.body;
-  if (!mobile) return res.status(400).json({ success: false, message: 'Mobile required' });
+// Register new user (mobile + name only)
+app.post('/register', (req, res) => {
+  const { mobile, fname } = req.body;
+  if (!mobile || !fname) return res.status(400).json({ success: false, message: 'Mobile and name required' });
 
-  db.query('SELECT * FROM users WHERE mobile = ? AND activity_status = ?', [mobile, 'active'], (err, results) => {
-    if (err) return res.status(500).json({ success: false, message: 'Database error' });
-    if (results.length === 0) return res.status(404).json({ success: false, message: 'User not found or inactive' });
+  db.query('SELECT * FROM users WHERE mobile = ?', [mobile], (err, rows) => {
+    if (err) return res.status(500).json({ success: false, message: 'DB error' });
 
-    const otp = generateOTP();
-    // Calculate expiry in IST
-    const now = new Date();
-    const istOffset = 5.5 * 60 * 60 * 1000;
-    const expiresAtIST = new Date(now.getTime() + istOffset + 5 * 60 * 1000);
-    const expiresAt = expiresAtIST.toISOString().slice(0, 19).replace('T', ' ');
-
-    db.query(
-      `INSERT INTO user_otps (mobile, otp, expires_at, verified) VALUES (?, ?, ?, 0)
-       ON DUPLICATE KEY UPDATE otp=?, expires_at=?, verified=0`,
-      [mobile, otp, expiresAt, otp, expiresAt],
-      async (err) => {
-        if (err) return res.status(500).json({ success: false, message: 'DB error' });
-
-        try {
-          await axios.post(
-            'https://graph.facebook.com/v23.0/707119972482974/messages',
-            {
-              messaging_product: "whatsapp",
-              recipient_type: "individual",
-              to: "91" + mobile,
-              type: "template",
-              template: {
-                name: "otp_resetpassword",
-                language: { code: "en_US" },
-                components: [
-                  {
-                    type: "body",
-                    parameters: [
-                      { type: "text", text: otp },
-                      
-                    ]
-                  },
-                  {
-                    type: "button",
-                    sub_type: "url",
-                    index: "0",
-                    parameters: [
-                      { type: "text", text: otp }
-                    ]
-                  }
-                ]
-              }
-            },
-            {
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer EAARndsa3g4UBPEUaXws3QNKUOOZC5Y284OO5QtWNfySBxkDEzs0qcCernZAz1oy9ZAeRqTyfIShfW8IcIjqLGvS9ACoR5Yw5zpfsQbZCzhl8a3ZCmDxTkjcT96C8HZAQGKRusZCtrkHRaab7aqkxh5rYjK3iZBMEWkxXrAv9ZAepwuGVi8JxT8yphAy0ZCDLRJ5gZDZD'
-              }
+    if (rows.length > 0) {
+      const user = rows[0];
+      if (user.activity_status === 'inactive') {
+        // Reactivate and update user with new name
+        db.query(
+          `UPDATE users SET fname = ?, activity_status = 'active' WHERE mobile = ?`,
+          [fname, mobile],
+          (err2) => {
+            if (err2) {
+              console.error('Reactivate DB error:', err2);
+              return res.status(500).json({ success: false, message: 'DB error', error: err2.message });
             }
-          );
-          res.json({ success: true, message: 'OTP sent' });
-        } catch (e) {
-          console.error('WhatsApp API error:', e.response?.data || e.message);
-          res.status(500).json({ success: false, message: 'Failed to send OTP', error: e.response?.data || e.message });
-        }
+            db.query('SELECT * FROM users WHERE mobile = ?', [mobile], (err3, userRows) => {
+              if (err3 || userRows.length === 0) return res.status(500).json({ success: false, message: 'Error fetching user' });
+              res.json({ success: true, user: userRows[0], reactivated: true });
+            });
+          }
+        );
+      } else {
+        // User is already active
+        return res.status(400).json({ success: false, message: 'User already exists' });
       }
-    );
-  });
-});
-
-app.post('/forgot-password/reset', async (req, res) => {
-  const { mobile, otp, newPassword } = req.body;
-  if (!mobile || !otp || !newPassword) {
-    return res.status(400).json({ success: false, message: 'Missing fields' });
-  }
-
-  // Verify OTP and check if verified
-  db.query(
-    'SELECT * FROM user_otps WHERE mobile = ? AND otp = ? AND expires_at > NOW() AND verified = 1',
-    [mobile, otp],
-    async (err, rows) => {
-      if (err) return res.status(500).json({ success: false, message: 'DB error' });
-      if (!rows.length) return res.status(400).json({ success: false, message: 'OTP not verified or expired' });
-
-      // Update password
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
+    } else {
+      // Insert new user with required NOT NULL fields
       db.query(
-        'UPDATE users SET password = ? WHERE mobile = ?',
-        [hashedPassword, mobile],
+        `INSERT INTO users (fname, lname, mobile, password, gender, activity_status)
+         VALUES (?, '', ?, '', 'Other', 'active')`,
+        [fname, mobile],
         (err2, result) => {
-          if (err2) return res.status(500).json({ success: false, message: 'Failed to update password' });
-          // Delete OTP after successful reset
-          db.query('DELETE FROM user_otps WHERE mobile = ?', [mobile]);
-          res.json({ success: true, message: 'Password updated successfully' });
+          if (err2) {
+            console.error('Registration DB error:', err2);
+            return res.status(500).json({ success: false, message: 'DB error', error: err2.message });
+          }
+          db.query('SELECT * FROM users WHERE id = ?', [result.insertId], (err3, userRows) => {
+            if (err3 || userRows.length === 0) return res.status(500).json({ success: false, message: 'Error fetching user' });
+            res.json({ success: true, user: userRows[0] });
+          });
         }
       );
     }
-  );
+  });
 });
-
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running on http://0.0.0.0:${PORT}`));

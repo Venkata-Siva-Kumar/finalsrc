@@ -1,6 +1,4 @@
-import React, { useState ,useContext } from 'react';
-import { LinearGradient } from 'expo-linear-gradient';
-import MaskedView from '@react-native-masked-view/masked-view';
+import React, { useState, useContext, useRef, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -10,10 +8,11 @@ import {
   StyleSheet,
   Animated,
   Keyboard,
-  TouchableWithoutFeedback,  
+  TouchableWithoutFeedback,
   ScrollView,
   KeyboardAvoidingView,
-  Platform, 
+  Platform,
+  Modal,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import axios from 'axios';
@@ -24,53 +23,117 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function LoginScreen({ navigation }) {
   const [mobile, setMobile] = useState('');
-  const [password, setPassword] = useState('');
+  // const [password, setPassword] = useState(''); // Commented out for OTP login
   const [focusedField, setFocusedField] = useState('');
   const [scaleValue] = useState(new Animated.Value(1));
   const { setUser, setUserMobile } = useContext(UserContext);
-  const [touched, setTouched] = useState({});
-  const [showPassword, setShowPassword] = useState(false);
-  
-  const handleLogin = async () => {
-  if (!mobile || !password) {
-    showAlert('Error', 'Please enter mobile number and password');
-    return;
-  }
-  if (mobile.length !== 10 || !/^\d{10}$/.test(mobile)) {
-    showAlert('Error', 'Check Mobile Number');
-    return;
-  }
-  try {
-    const response = await axios.post(`${API_BASE_URL}/login`, {
-      mobile,
-      password,
-    });
+  const [otpModalVisible, setOtpModalVisible] = useState(false);
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
+  const otpInputs = Array.from({ length: 6 }, () => useRef(null));
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [fname, setFname] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
 
-    const userRes = await axios.get(`${API_BASE_URL}/user?mobile=${mobile}`);
-      // If your backend returns { user: {...} }
-      const userData = userRes.data.user || userRes.data;
+  // Send OTP handler
+  const handleSendOtp = async () => {
+    if (!mobile || mobile.length !== 10 || !/^\d{10}$/.test(mobile)) {
+      showAlert('Error', 'Please enter a valid 10-digit mobile number');
+      return;
+    }
+    setLoginLoading(true);
+    try {
+      await axios.post(`${API_BASE_URL}/send-otp`, { mobile });
+      setOtpModalVisible(true);
+      setLoginLoading(false);
+    } catch (error) {
+      setLoginLoading(false);
+      showAlert('Error', error.response?.data?.message || 'Failed to send OTP');
+    }
+  };
 
-      setUser({
-        id: userData.id,
-        fname: userData.fname,
-        lname: userData.lname,
-        mobile: userData.mobile,
-        email: userData.email,
-        // ...add other fields if needed
-      });
+  // OTP digit change handler
+  const handleOtpDigitChange = (value, idx) => {
+    if (!/^\d*$/.test(value)) return;
+    const newOtp = [...otpDigits];
+    newOtp[idx] = value;
+    setOtpDigits(newOtp);
+    if (value && idx < 5) {
+      otpInputs[idx + 1].current?.focus();
+    }
+    if (!value && idx > 0) {
+      otpInputs[idx - 1].current?.focus();
+    }
+  };
+
+  // OTP validation handler
+  const handleOtpValidate = async () => {
+    const otpValue = otpDigits.join('');
+    if (otpValue.length !== 6) {
+      showAlert('Error', 'Enter 6-digit OTP');
+      return;
+    }
+    setOtpLoading(true);
+    try {
+      const res = await axios.post(`${API_BASE_URL}/verify-otp`, { mobile, otp: otpValue });
+      setOtpLoading(false);
+      setOtpModalVisible(false);
+      if (res.data.newUser) {
+        setShowNameModal(true);
+      } else {
+        // Existing user, log in
+        const userData = res.data.user;
+        setUser(userData);
+        setUserMobile(userData.mobile);
+        await AsyncStorage.setItem('user', JSON.stringify(userData));
+        navigation.replace('Main', { userMobile: userData.mobile });
+      }
+    } catch (err) {
+      setOtpLoading(false);
+      showAlert('OTP Failed', err.response?.data?.message || 'Invalid OTP');
+    }
+  };
+
+  // OTP resend handler
+  const handleOtpResend = async () => {
+    setOtpLoading(true);
+    try {
+      await axios.post(`${API_BASE_URL}/send-otp`, { mobile });
+      setOtpDigits(['', '', '', '', '', '']);
+      setOtpLoading(false);
+    } catch (err) {
+      setOtpLoading(false);
+      showAlert('Failed to resend OTP', err.response?.data?.message || 'Try again');
+    }
+  };
+
+  // OTP cancel handler
+  const handleOtpCancel = () => {
+    setOtpModalVisible(false);
+    setOtpDigits(['', '', '', '', '', '']);
+  };
+
+  // Register new user handler
+  const handleRegisterNewUser = async () => {
+    if (!fname || fname.trim().length < 2) {
+      showAlert('Error', 'Please enter your name');
+      return;
+    }
+    setLoginLoading(true);
+    try {
+      const res = await axios.post(`${API_BASE_URL}/register`, { mobile, fname });
+      const userData = res.data.user;
+      setUser(userData);
       setUserMobile(userData.mobile);
       await AsyncStorage.setItem('user', JSON.stringify(userData));
-    
-    navigation.replace('Main', { userMobile: userData.mobile }); // Pass mobile to Main
-
-  } catch (error) {
-    console.log(error);
-    showAlert(
-      'Login Failed',
-      error.response?.data?.message || 'Something went wrong'
-    );
-  }
-};
+      setShowNameModal(false);
+      navigation.replace('Main', { userMobile: userData.mobile });
+    } catch (err) {
+      setLoginLoading(false);
+      showAlert('Registration Failed', err.response?.data?.message || 'Something went wrong');
+    }
+    setLoginLoading(false);
+  };
 
   const handlePressIn = () => {
     Animated.spring(scaleValue, {
@@ -88,85 +151,274 @@ export default function LoginScreen({ navigation }) {
     }).start();
   };
 
+  // --- Main render ---
+  const MainContent = (
+    <>
+      <ExpoImage
+        source={require('../icon_gif.gif')}
+        style={styles.logo}
+        contentFit="contain"
+        transition={100}
+      />
+
+      <TextInput
+        style={[
+          styles.input,
+          focusedField === 'mobile' && styles.inputFocused
+        ]}
+        placeholder="Mobile Number"
+        placeholderTextColor="#888"
+        keyboardType="phone-pad"
+        value={mobile}
+        maxLength={10}
+        onChangeText={setMobile}
+        onFocus={() => setFocusedField('mobile')}
+        onBlur={() => setFocusedField('')}
+      />
+
+      {/* Password field commented out */}
+      {/* 
+      <View style={[ styles.input,{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, marginBottom: 20 }]}>
+        <TextInput
+          placeholder="Password"
+          placeholderTextColor="#888"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={!showPassword}
+          style={{ flex: 1,fontSize: 16,color: '#333',paddingVertical: 0, paddingHorizontal: 0,}}
+          onFocus={() => setFocusedField('password')}
+          onBlur={() => setFocusedField('')}
+        />
+        <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={{ padding: 4 }}>
+          <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={24} color="#888" />
+        </TouchableOpacity>
+      </View>
+      */}
+
+      <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
+        <TouchableOpacity
+          style={styles.button}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          onPress={handleSendOtp}
+          disabled={loginLoading}
+        >
+          <Text style={styles.buttonText}>{loginLoading ? 'Sending OTP...' : 'Continue'}</Text>
+        </TouchableOpacity>
+
+        {/* <TouchableOpacity
+          style={styles.button}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          onPress={() => navigation.navigate('AdminLogin')}>
+          <Text style={styles.buttonText}>Admin Login</Text>
+        </TouchableOpacity> */}
+      </Animated.View>
+    </>
+  );
+
+  // --- OTP Modal ---
+  const OtpModalContent = (
+    <View style={{
+      backgroundColor: '#fff',
+      borderRadius: 12,
+      padding: 32,
+      width: Platform.OS === 'web' ? '90%' : '90%',
+      alignItems: 'center',
+      elevation: 8
+    }}>
+      <Text style={{ fontWeight: 'bold', fontSize: 18, color: '#444', marginBottom: 10, textAlign: 'center' }}>
+        Please enter the One-Time Password to login
+      </Text>
+      <Text style={{ fontSize: 15, color: '#888', marginBottom: 24, textAlign: 'center' }}>
+        A One-Time Password has been sent to {mobile.replace(/^(\d{2})(\d{4})(\d{2})$/, '$1****$3')} Through WhatsApp.
+      </Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 28 }}>
+        {otpDigits.map((digit, idx) =>
+          Platform.OS === 'web' ? (
+            <input
+              key={idx}
+              ref={otpInputs[idx]}
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
+              style={{
+                width: 38,
+                height: 48,
+                borderWidth: 1.5,
+                borderColor: '#ddd',
+                borderRadius: 8,
+                marginLeft: 6,
+                marginRight: 6,
+                textAlign: 'center',
+                fontSize: 22,
+                backgroundColor: '#f7f7f7',
+              }}
+              value={digit}
+              onChange={e => handleOtpDigitChange(e.target.value, idx)}
+              autoFocus={idx === 0}
+              id={`otp-input-login-${idx}`}
+            />
+          ) : (
+            <TextInput
+              key={idx}
+              ref={otpInputs[idx]}
+              style={{
+                width: 38,
+                height: 48,
+                borderWidth: 1.5,
+                borderColor: '#ddd',
+                borderRadius: 8,
+                marginHorizontal: 6,
+                textAlign: 'center',
+                fontSize: 22,
+                backgroundColor: '#f7f7f7',
+                paddingVertical: 0,
+                textAlignVertical: 'center'
+              }}
+              keyboardType="number-pad"
+              maxLength={1}
+              value={digit}
+              onChangeText={value => handleOtpDigitChange(value, idx)}
+              autoFocus={idx === 0}
+              returnKeyType={idx === 5 ? 'done' : 'next'}
+              blurOnSubmit={false}
+            />
+          )
+        )}
+      </View>
+      <TouchableOpacity
+        style={{
+          backgroundColor: '#007aff',
+          borderRadius: 8,
+          paddingVertical: 12,
+          paddingHorizontal: 32,
+          marginBottom: 18,
+          marginTop: 8,
+          width: '100%',
+          alignItems: 'center'
+        }}
+        onPress={handleOtpValidate}
+        disabled={otpLoading}
+      >
+        <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>
+          {otpLoading ? 'Validating...' : 'Validate'}
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={handleOtpResend} disabled={otpLoading}>
+        <Text style={{ color: '#444', fontSize: 14, marginBottom: 8, textAlign: 'center', textDecorationLine: 'underline' }}>
+          Resend One-Time Password
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={handleOtpCancel}>
+        <Text style={{ color: '#888', fontSize: 13, textAlign: 'center', textDecorationLine: 'underline' }}>
+          Cancel
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // --- Name Modal for new user ---
+  const NameModalContent = (
+    <View style={{
+      backgroundColor: '#fff',
+      borderRadius: 12,
+      padding: 32,
+      width: Platform.OS === 'web' ? '90%' : '90%',
+      alignItems: 'center',
+      elevation: 8
+    }}>
+      <Text style={{ fontWeight: 'bold', fontSize: 18, color: '#444', marginBottom: 10, textAlign: 'center' }}>
+        You're almost there! ✋
+      </Text>
+      <TextInput
+        placeholder="Enter Your Name"
+        maxLength={20}
+        placeholderTextColor="#888"
+        style={[styles.input, { marginBottom: 18, width: '100%' }]}
+        value={fname}
+        onChangeText={setFname}
+        autoFocus
+      />
+      <TouchableOpacity
+        style={{
+          backgroundColor: '#007aff',
+          borderRadius: 8,
+          paddingVertical: 12,
+          paddingHorizontal: 32,
+          marginBottom: 18,
+          marginTop: 8,
+          width: '100%',
+          alignItems: 'center'
+        }}
+        onPress={handleRegisterNewUser}
+        disabled={loginLoading}
+      >
+        <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>
+          {loginLoading ? 'Registering...' : 'Start Shopping'}
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => setShowNameModal(false)}>
+        <Text style={{ color: '#888', fontSize: 13, textAlign: 'center', textDecorationLine: 'underline' }}>
+          Cancel
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     Platform.OS === 'web' ? (
       <View style={{ flex: 1 }}>
-        <ScrollView>
+        <ScrollView >
           <View style={styles.container}>
-            <ExpoImage
-              source={require('../icon_gif.gif')}
-              style={styles.logo}
-              contentFit="contain"
-              transition={100}
-            />
-          
-
-            <TextInput
-              style={[
-                styles.input,
-                focusedField === 'mobile' && styles.inputFocused
-              ]}
-              placeholder="Mobile Number"
-              placeholderTextColor="#888"
-              keyboardType="phone-pad"
-              value={mobile}
-              maxLength={10}
-              onChangeText={setMobile}
-              onFocus={() => setFocusedField('mobile')}
-              onBlur={() => setFocusedField('')}
-            />
-
-            <View style={[ styles.input,{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, marginBottom: 20 }]}>
-                <TextInput
-                  placeholder="Password"
-                  placeholderTextColor="#888"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  style={{ flex: 1,fontSize: 16,color: '#333',paddingVertical: 0, paddingHorizontal: 0,}}
-                  onFocus={() => setFocusedField('password')}
-                  onBlur={() => setFocusedField('')}
-                />
-                <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={{ padding: 4 }}>
-                  <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={24} color="#888" />
-                </TouchableOpacity>
-              </View>
-
-            <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
-              <TouchableOpacity
-                style={styles.button}
-                onPressIn={handlePressIn}
-                onPressOut={handlePressOut}
-                onPress={handleLogin}
+            {MainContent}
+            {/* OTP Modal */}
+            {otpModalVisible && (
+              <Modal
+                visible={otpModalVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={handleOtpCancel}
               >
-                <Text style={styles.buttonText}>Login</Text>
-
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.button}
-                onPressIn={handlePressIn}
-                onPressOut={handlePressOut}
-                onPress={() => navigation.navigate('AdminLogin')}>
-                <Text style={styles.buttonText}>Admin Login</Text>
-              </TouchableOpacity>
-
-            </Animated.View>
-
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>   
-              
-              <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} style={{ marginLeft: 6 }} >
-                <Text style={{ color: '#007aff', fontSize: 13, textDecorationLine: 'underline' }}>Forgot Password?</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => navigation.navigate('Signup')} style={{ marginRight: 6 }}>
-                <Text style={styles.link}>Don't have an account? Sign Up</Text>
-              </TouchableOpacity>
-
-            </View>
-
+                <View style={{
+                  flex: 1,
+                  backgroundColor: 'rgba(0,0,0,0.4)',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }}>
+                  {OtpModalContent}
+                </View>
+              </Modal>
+            )}
+            {/* Name Modal */}
+            {showNameModal && (
+              <Modal
+                visible={showNameModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowNameModal(false)}
+              >
+                <View style={{
+                  flex: 1,
+                  backgroundColor: 'rgba(0,0,0,0.4)',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }}>
+                  {NameModalContent}
+                </View>
+              </Modal>
+            )}
           </View>
         </ScrollView>
+        <View style={styles.absoluteBottomLinks}>
+          <TouchableOpacity onPress={() => navigation.navigate('Terms')}>
+            <Text style={styles.link}>Terms & Conditions</Text>
+          </TouchableOpacity>
+          <Text style={{ color: '#888', marginHorizontal: 8 }}>|</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('AdminLogin')}>
+            <Text style={styles.link}>Admin Login</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     ) : (
       <KeyboardAvoidingView
@@ -177,81 +429,51 @@ export default function LoginScreen({ navigation }) {
         <ScrollView>
           <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
             <View style={styles.container}>
-               <ExpoImage
-                source={require('../icon_gif.gif')}
-                style={styles.logo}
-                contentFit="contain"
-                transition={100}
-              />
-            
-
-              <TextInput
-                style={[
-                  styles.input,
-                  focusedField === 'mobile' && styles.inputFocused
-                ]}
-                placeholder="Mobile Number"
-                placeholderTextColor="#888"
-                keyboardType="phone-pad"
-                value={mobile}
-                maxLength={10}
-                onChangeText={setMobile}
-                onFocus={() => setFocusedField('mobile')}
-                onBlur={() => setFocusedField('')}
-              />
-
-              <View style={[ styles.input,{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, marginBottom: 20 }]}>
-                  <TextInput
-                    placeholder="Password"
-                    placeholderTextColor="#888"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!showPassword}
-                    style={{ flex: 1,fontSize: 16,color: '#333',paddingVertical: 0, paddingHorizontal: 0,}}
-                    onFocus={() => setFocusedField('password')}
-                    onBlur={() => setFocusedField('')}
-                  />
-                  <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={{ padding: 4 }}>
-                    <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={24} color="#888" />
-                  </TouchableOpacity>
+              {MainContent}
+              {/* OTP Modal */}
+              <Modal
+                visible={otpModalVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={handleOtpCancel}
+              >
+                <View style={{
+                  flex: 1,
+                  backgroundColor: 'rgba(0,0,0,0.4)',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }}>
+                  {OtpModalContent}
                 </View>
-
-              <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
-                <TouchableOpacity
-                  style={styles.button}
-                  onPressIn={handlePressIn}
-                  onPressOut={handlePressOut}
-                  onPress={handleLogin}
-                >
-                  <Text style={styles.buttonText}>Login</Text>
-
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.button}
-                  onPressIn={handlePressIn}
-                  onPressOut={handlePressOut}
-                  onPress={() => navigation.navigate('AdminLogin')}>
-                  <Text style={styles.buttonText}>Admin Login</Text>
-                </TouchableOpacity>
-
-              </Animated.View>
-
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>   
-                
-                <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} style={{ marginLeft: 6 }} >
-                  <Text style={{ color: '#007aff', fontSize: 13, textDecorationLine: 'underline' }}>Forgot Password?</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={() => navigation.navigate('Signup')} style={{ marginRight: 6 }}>
-                  <Text style={styles.link}>Don't have an account? Sign Up</Text>
-                </TouchableOpacity>
-
-              </View>
-
+              </Modal>
+              {/* Name Modal */}
+              <Modal
+                visible={showNameModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowNameModal(false)}
+              >
+                <View style={{
+                  flex: 1,
+                  backgroundColor: 'rgba(0,0,0,0.4)',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }}>
+                  {NameModalContent}
+                </View>
+              </Modal>
             </View>
           </TouchableWithoutFeedback>
         </ScrollView>
+        <View style={styles.absoluteBottomLinks}>
+          <TouchableOpacity onPress={() => navigation.navigate('Terms')}>
+            <Text style={styles.link}>Terms & Conditions</Text>
+          </TouchableOpacity>
+          <Text style={{ color: '#888', marginHorizontal: 8 }}></Text>
+          <TouchableOpacity onPress={() => navigation.navigate('AdminLogin')}>
+            <Text style={styles.link}>Admin Login</Text>
+          </TouchableOpacity>
+        </View>
       </KeyboardAvoidingView>
     )
   );
@@ -259,15 +481,14 @@ export default function LoginScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: {
-    //marginTop: 150,
     flex: 1,
     backgroundColor: '#eef3f9',
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
   logo: {
-    width: 150,
-    height: 150,
+    width: 200,
+    height: 200,
     resizeMode: 'contain',
     alignContent: 'center',
     alignSelf: 'center',
@@ -275,10 +496,7 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     marginTop: 100,
     resizeMode: 'contain',
-
   },
-
-  
   input: {
     backgroundColor: '#fff',
     borderWidth: 1.5,
@@ -316,12 +534,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.4,
   },
+  absoluteBottomLinks: {
+    position: 'absolute',
+    bottom: 18,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: Platform.OS === 'ios' ? 24 : 0,
+    backgroundColor: 'transparent',
+  },
   link: {
     color: '#007aff',
-    fontSize: 13,
+    fontSize: 15,
     textAlign: 'center',
     textDecorationLine: 'underline',
-    
+    fontWeight: 'bold',
+    marginBottom: 20,
   },
 });
 

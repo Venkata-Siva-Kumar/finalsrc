@@ -564,6 +564,16 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
   const [refreshing, setRefreshing] = useState(false);
   const [editCategoryId, setEditCategoryId] = useState('');
   const [editDescription, setEditDescription] = useState('');
+  const [categories, setCategories] = useState([]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      axios
+        .get(`${API_BASE_URL}/categories`)
+        .then((res) => setCategories(res.data))
+        .catch(() => setCategories([]));
+    }, [])
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -863,6 +873,60 @@ function CurrentProductsTab({ products, refreshProducts, setProducts }) {
               placeholder="Product Name"
               placeholderTextColor="#888"
             />
+
+            {/* Category Picker */}
+            <Text style={styles.labelCategory}>Category</Text>
+            <View style={{
+  borderWidth: 1,
+  borderColor: '#ccc',
+  borderRadius: 8,
+  marginBottom: 12,
+  backgroundColor: '#fff',
+  width: '100%', // Ensure full width
+}}>
+              {Platform.OS === 'web' ? (
+                <select
+                  value={editCategoryId}
+                  onChange={e => setEditCategoryId(e.target.value)}
+                  style={{
+                    width: '100%', // Full width for web
+                    padding: 10,
+                    border: 'none',
+                    outline: 'none',
+                    fontSize: 16,
+                    background: 'transparent',
+                  }}
+                >
+                  {categories.map(cat => (
+                    <option key={cat.id} value={String(cat.id)}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Picker
+                  selectedValue={editCategoryId}
+                  onValueChange={setEditCategoryId}
+                  style={{ color: 'black', width: '100%' }}
+                >
+                  {categories.map(cat => (
+                    <Picker.Item key={cat.id} label={cat.name} value={String(cat.id)} />
+                  ))}
+                </Picker>
+              )}
+            </View>
+
+            {/* Description Input */}
+            <Text style={styles.labelDescription}>Description</Text>
+            <TextInput
+              style={[styles.input, { minHeight: 40 }]}
+              value={editDescription}
+              onChangeText={setEditDescription}
+              placeholder="Description"
+              placeholderTextColor="#888"
+              multiline
+            />
+
             <Text style={styles.labelName}>Variants</Text>
             {editVariants.map((v, idx) => (
               <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>

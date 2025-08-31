@@ -42,7 +42,7 @@ If you have any questions or concerns regarding these Terms and Conditions or yo
 You must be at least 18 years old to use this application and its services. By registering, you confirm that you are 18 years of age or older. If you are under 18, you are not permitted to use this app.
 
 
-By clicking "Agree", you acknowledge that you have read, understood, and accepted these Terms and Conditions.
+
 `;
 
 export default TERMS_TEXT;

@@ -140,10 +140,10 @@ const [filteredOrders, setFilteredOrders] = useState([]);
             <Text style={styles.sectionText}>Contact Center</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.gridButton} onPress={handleLogout}>
+          {/* <TouchableOpacity style={styles.gridButton} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={32} color="#ff4d4d" style={styles.icon} />
             <Text style={[styles.sectionText, { color: '#ff4d4d' }]}>Logout</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       </View>
     </View>

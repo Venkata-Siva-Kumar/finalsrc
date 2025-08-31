@@ -59,8 +59,22 @@ export default function CartScreen({ navigation, route }) {
 
   // Delivery charge (always free for now)
   const [deliveryChargeSetting, setDeliveryChargeSetting] = useState({ delivery_charge: 0, free_delivery_limit: 0 });
+  const [couponsExist, setCouponsExist] = useState(false);
+  const [couponsLoading, setCouponsLoading] = useState(true);
 
-
+  useEffect(() => {
+    setCouponsLoading(true);
+    fetch(`${API_BASE_URL}/api/offers`)
+      .then(res => res.json())
+      .then(data => {
+        setCouponsExist(Array.isArray(data) && data.length > 0);
+        setCouponsLoading(false);
+      })
+      .catch(() => {
+        setCouponsExist(false);
+        setCouponsLoading(false);
+      });
+  }, []);
 
   function showAlert(title, message, buttons) {
   if (Platform.OS === 'web') {
@@ -215,8 +229,8 @@ export default function CartScreen({ navigation, route }) {
     setDiscount(0);
     setCouponMessage('');
 
-    if (newQuantity > 5) {
-      showAlert('Limit Reached', 'You can only add up to 5 units of each product.');
+    if (newQuantity > 10) {
+      showAlert('Limit Reached', 'You can only add up to 10 units of each product.');
       return;
     }
     if (newQuantity <= 0) {
@@ -607,47 +621,48 @@ export default function CartScreen({ navigation, route }) {
         )}
       </View>
 
-      {/* Coupon Section */}
-      <View style={{ marginVertical: 0, padding: 10, backgroundColor: "#f9f9f9", borderRadius: 8 }}>
-        
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <TextInput
-            style={{
-              flex: 1,
-              borderWidth: 1,
-              borderColor: "#ccc",
-              borderRadius: 5,
-              padding: 8,
-              marginRight: 8,
-              backgroundColor: "#fff",
-            }}
-            placeholder="Enter coupon code"
-            placeholderTextColor="#888"
-            value={couponCode}
-            onChangeText={handleCouponCodeInput}
-            autoCapitalize="characters"
-          />
-          <TouchableOpacity
-            style={{
-              backgroundColor: "#ff9500",
-              paddingVertical: 8,
-              paddingHorizontal: 16,
-              borderRadius: 5,
-            }}
-            onPress={handleApplyCoupon}
-            disabled={isApplying}
-          >
-            <Text style={{ color: "#fff", fontWeight: "bold" }}>
-              {isApplying ? "Applying..." : "Apply"}
+      {/* Coupon Section - only show if coupons exist and not loading */}
+      {(!couponsLoading && couponsExist) && (
+        <View style={{ marginVertical: 0, padding: 10, backgroundColor: "#f9f9f9", borderRadius: 8 }}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TextInput
+              style={{
+                flex: 1,
+                borderWidth: 1,
+                borderColor: "#ccc",
+                borderRadius: 5,
+                padding: 8,
+                marginRight: 8,
+                backgroundColor: "#fff",
+              }}
+              placeholder="Enter coupon code"
+              placeholderTextColor="#888"
+              value={couponCode}
+              onChangeText={handleCouponCodeInput}
+              autoCapitalize="characters"
+            />
+            <TouchableOpacity
+              style={{
+                backgroundColor: "#ff9500",
+                paddingVertical: 8,
+                paddingHorizontal: 16,
+                borderRadius: 5,
+              }}
+              onPress={handleApplyCoupon}
+              disabled={isApplying}
+            >
+              <Text style={{ color: "#fff", fontWeight: "bold" }}>
+                {isApplying ? "Applying..." : "Apply"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          {couponMessage ? (
+            <Text style={{ color: discount > 0 ? "green" : "red", marginTop: 6 }}>
+              {couponMessage}
             </Text>
-          </TouchableOpacity>
+          ) : null}
         </View>
-        {couponMessage ? (
-          <Text style={{ color: discount > 0 ? "green" : "red", marginTop: 6 }}>
-            {couponMessage}
-          </Text>
-        ) : null}
-      </View>
+      )}
 
       {/* Cart Items */}
       <FlatList

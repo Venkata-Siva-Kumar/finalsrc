@@ -33,7 +33,7 @@ export default function TermsScreen({ navigation, route }) {
       >
         <Text style={styles.text}>{TERMS_TEXT}</Text>
       </ScrollView>
-      <View style={styles.buttonRow}>
+      {/* <View style={styles.buttonRow}>
         <TouchableOpacity
           style={[styles.button, { backgroundColor: '#eee', marginRight: 8 }]}
           onPress={handleCancel}
@@ -50,7 +50,7 @@ export default function TermsScreen({ navigation, route }) {
         >
           <Text style={{ color: '#fff', fontWeight: 'bold' }}>Agree</Text>
         </TouchableOpacity>
-      </View>
+      </View> */}
     </View>
   );
 }

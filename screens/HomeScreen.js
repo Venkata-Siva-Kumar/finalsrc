@@ -75,11 +75,10 @@ export default function HomeScreen({ navigation, route }) {
 
   const fetchCategories = async () => {
     try {
-      const cached = await AsyncStorage.getItem('categories');
-      if (cached) setCategories(JSON.parse(cached));
+      
       const res = await axios.get(`${API_BASE_URL}/categories`);
       setCategories(res.data);
-      AsyncStorage.setItem('categories', JSON.stringify(res.data));
+      // AsyncStorage.setItem('categories', JSON.stringify(res.data));
     } catch {
       Alert.alert('Error', 'Failed to load categories');
     }
@@ -340,7 +339,7 @@ export default function HomeScreen({ navigation, route }) {
               </Text>
               <TouchableOpacity
                 onPress={() => {
-                  if (qty < 5) {
+                  if (qty < 10) {
                     handleAddVariantToCart(item, variant, qty + 1);
                     setVariantQuantities(prev => ({ ...prev, [variant.id]: qty + 1 }));
                   }
@@ -547,15 +546,15 @@ export default function HomeScreen({ navigation, route }) {
                             <Text style={{ minWidth: 18, textAlign: 'center', fontSize: 16 }}>{qty}</Text>
                             <TouchableOpacity
                               onPress={() => {
-                                if (qty < 5) {
+                                if (qty < 10) {
                                   const nextQty = qty + 1;
                                   setPopupVariantQuantities(prev => ({ ...prev, [v.id]: nextQty }));
                                   handleAddVariantToCart(modalProduct, v, nextQty);
                                 }
                               }}
-                              disabled={qty >= 5}
+                              disabled={qty >= 10}
                               style={{
-                                backgroundColor: qty >= 5 ? '#ccc' : '#28a745',
+                                backgroundColor: qty >= 10 ? '#ccc' : '#28a745',
                                 borderRadius: 12,
                                 width: 28,
                                 height: 28,
