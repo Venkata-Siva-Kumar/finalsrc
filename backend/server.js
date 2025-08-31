@@ -1307,16 +1307,20 @@ app.post('/verify-otp', (req, res) => {
       if (err) return res.status(500).json({ success: false, message: 'DB error' });
       if (!rows.length) return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
 
-      // Mark OTP as verified
       db.query('UPDATE user_otps SET verified = 1 WHERE mobile = ?', [mobile], (err2) => {
         if (err2) return res.status(500).json({ success: false, message: 'Failed to verify OTP' });
 
-        // Check if user exists and is active
-        db.query('SELECT * FROM users WHERE mobile = ? AND activity_status = "active"', [mobile], (err3, userRows) => {
+        // Check if user exists
+        db.query('SELECT * FROM users WHERE mobile = ?', [mobile], (err3, userRows) => {
           if (err3) return res.status(500).json({ success: false, message: 'DB error' });
           if (userRows.length > 0) {
-            // Existing user, return user data
-            return res.json({ success: true, newUser: false, user: userRows[0] });
+            if (userRows[0].activity_status === 'active') {
+              // Existing active user
+              return res.json({ success: true, newUser: false, user: userRows[0] });
+            } else {
+              // Inactive user, prompt for name to reactivate
+              return res.json({ success: true, newUser: true, inactiveUser: true });
+            }
           } else {
             // New user, prompt for name
             return res.json({ success: true, newUser: true });
