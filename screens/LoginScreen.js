@@ -1,4 +1,4 @@
-import React, { useState, useContext, useRef, useLayoutEffect } from 'react';
+import React, { useState, useContext, useRef } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { UserContext } from '../UserContext';
 import { API_BASE_URL } from '../config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 
 export default function LoginScreen({ navigation }) {
   const [mobile, setMobile] = useState('');
@@ -34,6 +35,7 @@ export default function LoginScreen({ navigation }) {
   const [showNameModal, setShowNameModal] = useState(false);
   const [fname, setFname] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+  const insets = useSafeAreaInsets();
 
   // Send OTP handler
   const handleSendOtp = async () => {
@@ -42,6 +44,7 @@ export default function LoginScreen({ navigation }) {
       return;
     }
     setLoginLoading(true);
+    setOtpDigits(['', '', '', '', '', '']); // Reset OTP digits
     try {
       await axios.post(`${API_BASE_URL}/send-otp`, { mobile });
       setOtpModalVisible(true);
@@ -135,6 +138,12 @@ export default function LoginScreen({ navigation }) {
     setLoginLoading(false);
   };
 
+  // Cancel name modal handler (reset OTP digits)
+  const handleNameModalCancel = () => {
+    setShowNameModal(false);
+    setOtpDigits(['', '', '', '', '', '']);
+  };
+
   const handlePressIn = () => {
     Animated.spring(scaleValue, {
       toValue: 0.96,
@@ -206,13 +215,15 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.buttonText}>{loginLoading ? 'Sending OTP...' : 'Continue'}</Text>
         </TouchableOpacity>
 
-        {/* <TouchableOpacity
+        {/* 
+        <TouchableOpacity
           style={styles.button}
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
           onPress={() => navigation.navigate('AdminLogin')}>
           <Text style={styles.buttonText}>Admin Login</Text>
-        </TouchableOpacity> */}
+        </TouchableOpacity> 
+        */}
       </Animated.View>
     </>
   );
@@ -358,7 +369,7 @@ export default function LoginScreen({ navigation }) {
           {loginLoading ? 'Registering...' : 'Start Shopping'}
         </Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => setShowNameModal(false)}>
+      <TouchableOpacity onPress={handleNameModalCancel}>
         <Text style={{ color: '#888', fontSize: 13, textAlign: 'center', textDecorationLine: 'underline' }}>
           Cancel
         </Text>
@@ -366,10 +377,11 @@ export default function LoginScreen({ navigation }) {
     </View>
   );
 
-  return (
-    Platform.OS === 'web' ? (
+  // --- Render ---
+  if (Platform.OS === 'web') {
+    return (
       <View style={{ flex: 1 }}>
-        <ScrollView >
+        <ScrollView>
           <View style={styles.container}>
             {MainContent}
             {/* OTP Modal */}
@@ -396,7 +408,7 @@ export default function LoginScreen({ navigation }) {
                 visible={showNameModal}
                 transparent
                 animationType="fade"
-                onRequestClose={() => setShowNameModal(false)}
+                onRequestClose={handleNameModalCancel}
               >
                 <View style={{
                   flex: 1,
@@ -410,17 +422,30 @@ export default function LoginScreen({ navigation }) {
             )}
           </View>
         </ScrollView>
-        <View style={styles.absoluteBottomLinks}>
-          <TouchableOpacity onPress={() => navigation.navigate('Terms')}>
-            <Text style={styles.link}>Terms & Conditions</Text>
-          </TouchableOpacity>
-          <Text style={{ color: '#888', marginHorizontal: 8 }}>|</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('AdminLogin')}>
-            <Text style={styles.link}>Admin Login</Text>
-          </TouchableOpacity>
+        <View style={styles.bottomInfoContainer}>
+          <Text style={styles.agreeText}>
+            By continuing, you agree to our{' '}
+            <Text
+              style={styles.termsLink}
+              onPress={() => navigation.navigate('Terms')}
+            >
+              Terms & Conditions
+            </Text>
+          </Text>
+          <Text
+            style={styles.adminLoginLink}
+            onPress={() => navigation.navigate('AdminLogin')}
+          >
+            Admin Login
+          </Text>
         </View>
       </View>
-    ) : (
+    );
+  }
+
+  // Mobile
+  return (
+    <View style={{ flex: 1 }}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -451,7 +476,7 @@ export default function LoginScreen({ navigation }) {
                 visible={showNameModal}
                 transparent
                 animationType="fade"
-                onRequestClose={() => setShowNameModal(false)}
+                onRequestClose={handleNameModalCancel}
               >
                 <View style={{
                   flex: 1,
@@ -465,17 +490,31 @@ export default function LoginScreen({ navigation }) {
             </View>
           </TouchableWithoutFeedback>
         </ScrollView>
-        <View style={styles.absoluteBottomLinks}>
-          <TouchableOpacity onPress={() => navigation.navigate('Terms')}>
-            <Text style={styles.link}>Terms & Conditions</Text>
-          </TouchableOpacity>
-          <Text style={{ color: '#888', marginHorizontal: 8 }}></Text>
-          <TouchableOpacity onPress={() => navigation.navigate('AdminLogin')}>
-            <Text style={styles.link}>Admin Login</Text>
-          </TouchableOpacity>
-        </View>
       </KeyboardAvoidingView>
-    )
+      <SafeAreaView
+        style={[
+          styles.bottomInfoContainer,
+          { paddingBottom: insets.bottom > 0 ? insets.bottom : 18 }
+        ]}
+        edges={['bottom']}
+      >
+        <Text style={styles.agreeText}>
+          By continuing, you agree to our{' '}
+          <Text
+            style={styles.termsLink}
+            onPress={() => navigation.navigate('Terms')}
+          >
+            Terms & Conditions
+          </Text>
+        </Text>
+        <Text
+          style={styles.adminLoginLink}
+          onPress={() => navigation.navigate('AdminLogin')}
+        >
+          Admin Login
+        </Text>
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -534,24 +573,34 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.4,
   },
-  absoluteBottomLinks: {
+  bottomInfoContainer: {
     position: 'absolute',
-    bottom: 18,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
+    bottom: Platform.OS === 'ios' ? 24 : 18,
     alignItems: 'center',
-    paddingBottom: Platform.OS === 'ios' ? 24 : 0,
+    paddingHorizontal: 24,
     backgroundColor: 'transparent',
+    zIndex: 100,
   },
-  link: {
-    color: '#007aff',
+  agreeText: {
+    color: '#888',
     fontSize: 15,
     textAlign: 'center',
+    marginBottom: 8,
+  },
+  termsLink: {
+    color: '#d9534f',
     textDecorationLine: 'underline',
     fontWeight: 'bold',
-    marginBottom: 20,
+  },
+  adminLoginLink: {
+    color: '#007aff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    textDecorationLine: 'underline',
+    marginTop: 8,
   },
 });
 
