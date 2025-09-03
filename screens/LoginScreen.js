@@ -36,6 +36,7 @@ export default function LoginScreen({ navigation }) {
   const [fname, setFname] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const insets = useSafeAreaInsets();
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   // Send OTP handler
   const handleSendOtp = async () => {
@@ -422,99 +423,105 @@ export default function LoginScreen({ navigation }) {
             )}
           </View>
         </ScrollView>
-        <View style={styles.bottomInfoContainer}>
-          <Text style={styles.agreeText}>
-            By continuing, you agree to our{' '}
-            <Text
-              style={styles.termsLink}
+        {!keyboardVisible && (
+          <SafeAreaView
+            style={styles.bottomTabBar}
+            edges={['bottom']}
+            pointerEvents="box-none"
+          >
+            <TouchableOpacity
+              style={styles.bottomTabItem}
               onPress={() => navigation.navigate('Terms')}
             >
-              Terms & Conditions
-            </Text>
-          </Text>
-          <Text
-            style={styles.adminLoginLink}
-            onPress={() => navigation.navigate('AdminLogin')}
-          >
-            Admin Login
-          </Text>
-        </View>
+              <Text style={styles.bottomTabText}>Terms & Conditions</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.bottomTabItem}
+              onPress={() => navigation.navigate('AdminLogin')}
+            >
+              <Text style={styles.bottomTabText}>Admin Login</Text>
+            </TouchableOpacity>
+          </SafeAreaView>
+        )}
       </View>
     );
   }
 
   // Mobile
   return (
-    <View style={{ flex: 1 }}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    >
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+        keyboardShouldPersistTaps="handled"
       >
-        <ScrollView>
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-            <View style={styles.container}>
-              {MainContent}
-              {/* OTP Modal */}
-              <Modal
-                visible={otpModalVisible}
-                transparent
-                animationType="fade"
-                onRequestClose={handleOtpCancel}
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={styles.container}>
+            {MainContent}
+            {/* OTP Modal */}
+            <Modal
+              visible={otpModalVisible}
+              transparent
+              animationType="fade"
+              onRequestClose={handleOtpCancel}
+            >
+              <View style={{
+                flex: 1,
+                backgroundColor: 'rgba(0,0,0,0.4)',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}>
+                {OtpModalContent}
+              </View>
+            </Modal>
+            {/* Name Modal */}
+            <Modal
+              visible={showNameModal}
+              transparent
+              animationType="fade"
+              onRequestClose={handleNameModalCancel}
+            >
+              <View style={{
+                flex: 1,
+                backgroundColor: 'rgba(0,0,0,0.4)',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}>
+                {NameModalContent}
+              </View>
+            </Modal>
+            {/* Move bottom info container here */}
+            <SafeAreaView
+              style={[
+                styles.bottomInfoContainer,
+                { paddingBottom: insets.bottom > 0 ? insets.bottom : 18, position: 'relative' }
+              ]}
+              edges={['bottom']}
+              pointerEvents="box-none"
+            >
+              <Text style={styles.agreeText}>
+                By continuing, you agree to our{' '}
+                <Text
+                  style={styles.termsLink}
+                  onPress={() => navigation.navigate('Terms')}
+                >
+                  Terms & Conditions
+                </Text>
+              </Text>
+              <Text
+                style={styles.adminLoginLink}
+                onPress={() => navigation.navigate('AdminLogin')}
               >
-                <View style={{
-                  flex: 1,
-                  backgroundColor: 'rgba(0,0,0,0.4)',
-                  justifyContent: 'center',
-                  alignItems: 'center'
-                }}>
-                  {OtpModalContent}
-                </View>
-              </Modal>
-              {/* Name Modal */}
-              <Modal
-                visible={showNameModal}
-                transparent
-                animationType="fade"
-                onRequestClose={handleNameModalCancel}
-              >
-                <View style={{
-                  flex: 1,
-                  backgroundColor: 'rgba(0,0,0,0.4)',
-                  justifyContent: 'center',
-                  alignItems: 'center'
-                }}>
-                  {NameModalContent}
-                </View>
-              </Modal>
-            </View>
-          </TouchableWithoutFeedback>
-        </ScrollView>
-      </KeyboardAvoidingView>
-      <SafeAreaView
-        style={[
-          styles.bottomInfoContainer,
-          { paddingBottom: insets.bottom > 0 ? insets.bottom : 18 }
-        ]}
-        edges={['bottom']}
-      >
-        <Text style={styles.agreeText}>
-          By continuing, you agree to our{' '}
-          <Text
-            style={styles.termsLink}
-            onPress={() => navigation.navigate('Terms')}
-          >
-            Terms & Conditions
-          </Text>
-        </Text>
-        <Text
-          style={styles.adminLoginLink}
-          onPress={() => navigation.navigate('AdminLogin')}
-        >
-          Admin Login
-        </Text>
-      </SafeAreaView>
-    </View>
+                Admin Login
+              </Text>
+            </SafeAreaView>
+          </View>
+        </TouchableWithoutFeedback>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -522,7 +529,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#eef3f9',
-    justifyContent: 'center',
+    // justifyContent: 'center',
     paddingHorizontal: 24,
   },
   logo: {
@@ -577,9 +584,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: Platform.OS === 'ios' ? 24 : 18,
+    bottom: 0,
     alignItems: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 14,
     backgroundColor: 'transparent',
     zIndex: 100,
   },
@@ -588,6 +595,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: 'center',
     marginBottom: 8,
+    marginTop:250,
   },
   termsLink: {
     color: '#d9534f',
@@ -601,6 +609,32 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     textDecorationLine: 'underline',
     marginTop: 8,
+  },
+  bottomTabBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingVertical: 14,
+    paddingBottom: 18, // or use insets.bottom if you want
+    zIndex: 100,
+    elevation: 10,
+  },
+  bottomTabItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  bottomTabText: {
+    color: '#007aff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textDecorationLine: 'underline',
   },
 });
 

@@ -4,6 +4,7 @@ import { CartContext } from './CartContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { API_BASE_URL } from '../config';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function isValidDob(dob) {
   // Expects dd-mm-yyyy
@@ -190,23 +191,7 @@ export default function ProfileScreen({ route, navigation }) {
       headerRight: () => (
         <TouchableOpacity
           style={{ marginRight: 18 }}
-          onPress={() => {
-            // Confirm logout
-            if (Platform.OS === 'web') {
-              if (window.confirm('Are you sure you want to logout?')) {
-                navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-              }
-            } else {
-              Alert.alert(
-                'Logout',
-                'Are you sure you want to logout?',
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Logout', style: 'destructive', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) }
-                ]
-              );
-            }
-          }}
+          onPress={handleLogout}
         >
           <Ionicons name="log-out-outline" size={28} color="#d9534f" />
         </TouchableOpacity>
@@ -214,6 +199,26 @@ export default function ProfileScreen({ route, navigation }) {
       title: 'Profile',
     });
   }, [navigation]);
+
+  const handleLogout = () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to logout?')) {
+        AsyncStorage.removeItem('user').then(() => navigation.replace('Login'));
+      }
+    } else {
+      Alert.alert('Logout', 'Are you sure you want to logout?', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            await AsyncStorage.removeItem('user');
+            navigation.replace('Login');
+          },
+        },
+      ]);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -252,7 +257,7 @@ export default function ProfileScreen({ route, navigation }) {
         value={mobile}
         editable={false}
       />
-      <View style={styles.genderContainer}>
+      {/* <View style={styles.genderContainer}>
         <Text style={{ marginBottom: 8 }}>Gender:</Text>
         <TouchableOpacity style={styles.radioContainer} onPress={() => setGender('Male')}>
           <View style={[styles.radio, gender === 'Male' && styles.radioSelected]} />
@@ -266,7 +271,7 @@ export default function ProfileScreen({ route, navigation }) {
           <View style={[styles.radio, gender === 'Other' && styles.radioSelected]} />
           <Text style={styles.radioLabel}>Other</Text>
         </TouchableOpacity>
-      </View>
+      </View> */}
       <TextInput
         placeholder="user@gmail.com"
         placeholderTextColor="#888"

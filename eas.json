@@ -11,13 +11,13 @@
     "preview": {
       "distribution": "internal",
       "android": {
-        "image": "ubuntu-22.04-jdk-17-ndk-r25b"
+        "image": "ubuntu-24.04-jdk-17-ndk-r27b"
       }
     },
     "production": {
       "autoIncrement": true,
       "android": {
-        "image": "ubuntu-22.04-jdk-17-ndk-r25b"
+        "image": "ubuntu-24.04-jdk-17-ndk-r27b"
       }
     }
   },
